@@ -174,3 +174,10 @@ cython_debug/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Local tooling
+.vite/

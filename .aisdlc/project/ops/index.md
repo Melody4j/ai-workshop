@@ -18,6 +18,7 @@
 
 - 依赖清单：[backend/requirements/base.txt](../../../backend/requirements/base.txt)
 - 新增依赖（Spec 003）：django-apscheduler、httpx、html2text、beautifulsoup4、playwright、croniter
+- 新增依赖（Spec 004）：instructor、pydantic、jinja2、openai
 
 ## Scheduler 运维
 
@@ -25,6 +26,16 @@
 - 启动条件：`RUN_MAIN=true`（runserver worker 进程）
 - 生产环境限制：gunicorn/uwsgi 不设 `RUN_MAIN`，scheduler 不会自动启动；多 worker 部署会重复触发
 - 采集文件存储：`{项目根}/data/snapshots/{project_id}/{YYYYMMDD}/{HHMMSS}_{domain}.{ext}`
+- LLM 降噪文件存储：`{项目根}/data/snapshots/{project_id}/{YYYYMMDD}/llm_{HHMMSS}_{domain}.md`（`llm_` 前缀标识）
+- 报告产物存储：`{项目根}/data/reports/`
+
+## LLM 配置
+
+- 配置文件：`backend/.env`（gitignored，不入库）
+- 配置项：`LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` / `LLM_TEMPERATURE` / `LLM_MAX_TOKENS`
+- 读取入口：`backend/config/settings.py`（从 `os.environ` 读取）
+- LLM 服务：`backend/apps/intelligence/services/llm_service.py`（3 次独立调用）
+- 重试机制：3 次 / 30s 间隔（`backend/apps/intelligence/services/retry.py`）
 
 ## 飞书推送运维
 
@@ -32,6 +43,7 @@
 - 推送服务：`backend/apps/intelligence/services/feishu_service.py`
 - 手动推送 API：`POST /api/feeds/{id}/push`（仅 CHANGED feed 可推送）
 - MD 下载 API：`GET /api/feeds/{id}/download_md`
+- HTML 预览：`GET /view/html/{id}`（inline，`text/html`）或 `GET /api/feeds/{id}/preview_html`
 - 推送重试：2 次重试间隔 30s（同步 sleep，不引入消息队列）
 - 推送状态追踪：`IntelligenceFeed.push_status`（NOT_PUSHED / PUSHED / PUSH_FAILED）
 
@@ -44,6 +56,8 @@
 - [backend/apps/intelligence/tests/test_models.py](../../../backend/apps/intelligence/tests/test_models.py)
 - [backend/apps/intelligence/tests/test_scheduler_service.py](../../../backend/apps/intelligence/tests/test_scheduler_service.py)
 - [backend/apps/intelligence/tests/test_feishu_service.py](../../../backend/apps/intelligence/tests/test_feishu_service.py)
+- [backend/apps/intelligence/tests/test_llm_pipeline_e2e.py](../../../backend/apps/intelligence/tests/test_llm_pipeline_e2e.py)
+- [backend/apps/intelligence/tests/test_llm_service.py](../../../backend/apps/intelligence/tests/test_llm_service.py)
 - [verification/report-2026-07-08-unknown.md](../../specs/001-competitive-intel-agent/verification/report-2026-07-08-unknown.md)
 
 ## Evidence Gaps

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "cron-parser": "^5.6.1",
     "cronstrue": "^3.24.0",
     "element-plus": "^2.14.2",
     "vue": "^3.5.18",

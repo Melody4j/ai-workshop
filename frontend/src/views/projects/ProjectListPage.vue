@@ -1,13 +1,34 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue"
+import { computed, onMounted, ref } from "vue"
 import { ElMessage } from "element-plus"
 import { useRouter } from "vue-router"
 
 import { disableProject, listProjects, type Project } from "../../api/projects"
+import { cron2label, getNextRuns, toQuartzCron } from "../../components/cron/cron-utils"
 
 const router = useRouter()
 const projects = ref<Project[]>([])
 const loading = ref(false)
+
+const projectNextRuns = computed(() => {
+  const map: Record<number, string[]> = {}
+  for (const p of projects.value) {
+    if (p.is_active) {
+      map[p.id] = getNextRuns(p.cron, 5)
+    } else {
+      map[p.id] = []
+    }
+  }
+  return map
+})
+
+const projectCronLabels = computed(() => {
+  const map: Record<number, string> = {}
+  for (const p of projects.value) {
+    map[p.id] = cron2label(toQuartzCron(p.cron))
+  }
+  return map
+})
 
 async function loadProjects() {
   loading.value = true
@@ -72,10 +93,26 @@ onMounted(loadProjects)
             <dd>{{ project.cron }}</dd>
           </div>
           <div>
+            <dt>调度语义</dt>
+            <dd>{{ projectCronLabels[project.id] }}</dd>
+          </div>
+          <div>
             <dt>竞品数量</dt>
             <dd>{{ project.competitor_urls.length }}</dd>
           </div>
         </dl>
+
+        <div
+          v-if="project.is_active && projectNextRuns[project.id]?.length"
+          class="next-runs-block"
+        >
+          <p class="next-runs-block__title">接下来 5 次运行</p>
+          <ul class="next-runs-block__list">
+            <li v-for="(run, index) in projectNextRuns[project.id]" :key="index">
+              {{ run }}
+            </li>
+          </ul>
+        </div>
 
         <div class="action-row action-row--end">
           <el-button @click="router.push(`/projects/${project.id}/edit`)">编辑</el-button>

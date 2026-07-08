@@ -6,6 +6,8 @@ import {
   cronObj2cron,
   defaultCronForm,
   form2cronObj,
+  getNextRuns,
+  toBackendCron,
   type CronForm,
 } from "./cron-utils"
 
@@ -34,6 +36,7 @@ watch(
 
 const cronText = computed(() => cronObj2cron(form2cronObj(form)))
 const cronLang = computed(() => cron2label(cronText.value))
+const nextRuns = computed(() => getNextRuns(toBackendCron(cronText.value), 5))
 
 // 日/周互斥：选日 → 周自动设"不指定"，选周 → 日自动设"不指定"
 watch(
@@ -301,6 +304,14 @@ function cancel() {
         <span class="cron-preview__label">自然语言表达</span>
         <el-input :model-value="cronLang" type="textarea" :autosize="{ minRows: 1, maxRows: 3 }" readonly size="small" />
       </div>
+    </div>
+
+    <!-- 接下来 5 次运行时间 -->
+    <div class="cron-next-runs" v-if="nextRuns.length">
+      <p class="cron-next-runs__title">接下来 5 次运行时间</p>
+      <ul class="cron-next-runs__list">
+        <li v-for="(run, index) in nextRuns" :key="index">{{ index + 1 }}. {{ run }}</li>
+      </ul>
     </div>
 
     <!-- 操作按钮 -->

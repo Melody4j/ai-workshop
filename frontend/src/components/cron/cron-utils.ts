@@ -1,4 +1,5 @@
 import cronstrue from "cronstrue"
+import cronParser from "cron-parser"
 import "cronstrue/locales/zh_CN"
 
 export type Unit = "second" | "minute" | "hour" | "day" | "month" | "week"
@@ -271,4 +272,33 @@ function convertSingleWeekCrontabToQuartz(val: string): string {
   const n = parseInt(val)
   if (isNaN(n)) return val
   return String(n + 1)
+}
+
+/**
+ * 计算接下来 N 次运行时间（基于 5 段 crontab）
+ */
+export function getNextRuns(crontab: string, count = 5): string[] {
+  if (!crontab) return []
+  try {
+    const interval = cronParser.parseExpression(crontab, { currentDate: new Date() })
+    const results: string[] = []
+    for (let i = 0; i < count; i++) {
+      const next = interval.next()
+      results.push(formatDate(next.toDate()))
+    }
+    return results
+  } catch {
+    return []
+  }
+}
+
+function formatDate(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const d = String(date.getDate()).padStart(2, "0")
+  const h = String(date.getHours()).padStart(2, "0")
+  const min = String(date.getMinutes()).padStart(2, "0")
+  const weekdayNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
+  const w = weekdayNames[date.getDay()]
+  return `${y}-${m}-${d} ${w} ${h}:${min}`
 }

@@ -226,6 +226,37 @@ a {
   margin: 0;
 }
 
+.next-runs-block {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f6f6f6;
+  display: grid;
+  gap: 8px;
+}
+
+.next-runs-block__title {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #999;
+}
+
+.next-runs-block__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.next-runs-block__list li {
+  font-size: 0.875rem;
+  color: #444;
+  padding: 3px 0;
+}
+
 .upload-card,
 .cron-card,
 .cron-value {
@@ -277,7 +308,8 @@ a {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  min-height: 32px;
 }
 
 .cron-line:last-child {
@@ -286,6 +318,8 @@ a {
 
 .cron-line .el-radio {
   margin-right: 0;
+  min-width: 72px;
+  flex-shrink: 0;
 }
 
 .cron-line > span {
@@ -294,13 +328,51 @@ a {
   white-space: nowrap;
 }
 
+.cron-line .el-input-number {
+  width: 120px;
+  flex-shrink: 0;
+}
+
 .cron-select {
-  min-width: 200px;
-  max-width: 400px;
+  min-width: 220px;
+  max-width: 100%;
+  flex: 1 1 220px;
 }
 
 .cron-week-select {
-  width: 100px;
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.cron-next-runs {
+  display: grid;
+  gap: 4px;
+}
+
+.cron-next-runs__title {
+  font-size: 0.75rem;
+  color: #999;
+  letter-spacing: 0.08em;
+  margin: 0;
+}
+
+.cron-next-runs__list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cron-next-runs__list li {
+  font-size: 0.875rem;
+  color: #444;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--el-border-color-light);
+}
+
+.cron-next-runs__list li:last-child {
+  border-bottom: none;
 }
 
 .cron-preview {

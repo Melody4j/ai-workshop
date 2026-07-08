@@ -113,7 +113,7 @@ status: draft
 
 ### Task T1: IntelligenceFeed 新增 push_status 字段 + migration + serializers
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/`
@@ -157,7 +157,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `005-feishu-push`
-    commit: `<TBD>`
+    commit: `d7f827a`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/models.py`
@@ -169,7 +169,7 @@ status: draft
 
 ### Task T2: settings.py 新增 SITE_BASE_URL 配置
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/config/`
@@ -196,7 +196,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `005-feishu-push`
-    commit: `<TBD>`
+    commit: `f02e781`
     pr: `<TBD>`
     changed_files:
       - `backend/config/settings.py`
@@ -205,7 +205,7 @@ status: draft
 
 ### Task T3: feishu_service 推送服务实现 + 单元测试
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`
@@ -267,7 +267,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `005-feishu-push`
-    commit: `<TBD>`
+    commit: `e573cc8`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/services/feishu_service.py`
@@ -277,7 +277,7 @@ status: draft
 
 ### Task T4: API 端点（手动推送 + MD 下载）+ API 测试
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/`
@@ -330,7 +330,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `005-feishu-push`
-    commit: `<TBD>`
+    commit: `52a5743`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/views.py`

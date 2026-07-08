@@ -95,6 +95,7 @@ class IntelligenceFeed(TimestampedModel):
     user_comment = models.TextField(blank=True)
     html_report_path = models.CharField(max_length=255, blank=True)
     md_table_path = models.CharField(max_length=255, blank=True)
+    diff_text = models.TextField(blank=True, default="")
     published_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
@@ -102,3 +103,25 @@ class IntelligenceFeed(TimestampedModel):
 
     def __str__(self) -> str:
         return f"{self.project.project_name} - {self.job_status}"
+
+
+class PromptVersion(TimestampedModel):
+    """Prompt 版本表：每次 LLM 优化后存档历史版本，支持回滚。"""
+
+    prompt_name = models.CharField(max_length=50)
+    content = models.TextField()
+    version = models.IntegerField(default=1)
+    feed = models.ForeignKey(
+        IntelligenceFeed,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="prompt_versions",
+    )
+    optimization_reason = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-version", "-id"]
+
+    def __str__(self) -> str:
+        return f"{self.prompt_name} v{self.version}"

@@ -328,7 +328,17 @@ a {
 }
 
 .empty-state {
-  color: #666;
+  margin: 0;
+  color: #222;
+  font-size: 1rem;
+}
+
+.empty-panel {
+  display: grid;
+  align-items: center;
+  min-height: 180px;
+  text-align: center;
+  background: #fafafa;
 }
 
 .error-text {

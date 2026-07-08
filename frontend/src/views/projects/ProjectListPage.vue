@@ -39,10 +39,11 @@ onMounted(loadProjects)
       <button class="primary-button" @click="router.push('/projects/new')">新建任务</button>
     </div>
 
-    <p v-if="error" class="error-text">{{ error }}</p>
-    <p v-else-if="loading">正在加载任务列表...</p>
+    <section class="card-grid">
+      <article v-if="projects.length === 0" class="panel empty-panel">
+        <p class="empty-state">当前还没有监控任务。</p>
+      </article>
 
-    <section v-else class="card-grid">
       <article v-for="project in projects" :key="project.id" class="panel panel--compact">
         <div class="page-header page-header--compact">
           <div>

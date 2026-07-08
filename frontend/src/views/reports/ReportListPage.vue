@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue"
+import { computed, onMounted, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 
+import { ApiError } from "../../api/client"
 import { listProjects, type Project } from "../../api/projects"
 import { listReports, type ReportSummary } from "../../api/reports"
 
@@ -17,12 +18,10 @@ const statusLabel = {
   NO_CHANGE: "无变更",
   ERROR_CRAWL: "执行失败",
 } as const
-const filters = reactive({
-  project: String(route.query.project ?? ""),
-  status: "",
-  date_from: "",
-  date_to: "",
-})
+const selectedProjectId = computed(() => String(route.query.project ?? ""))
+const selectedProject = computed(() =>
+  projects.value.find((project) => String(project.id) === selectedProjectId.value) ?? null,
+)
 
 async function loadProjects() {
   projects.value = await listProjects()
@@ -32,17 +31,31 @@ async function loadReports() {
   loading.value = true
   error.value = ""
   try {
-    reports.value = await listReports(filters)
+    reports.value = await listReports(
+      selectedProjectId.value ? { project: selectedProjectId.value } : {},
+    )
   } catch (err) {
-    error.value = err instanceof Error ? err.message : "Failed to load reports."
+    error.value =
+      err instanceof ApiError ? err.message : "任务执行记录加载失败，请稍后重试。"
   } finally {
     loading.value = false
   }
 }
 
 async function initialize() {
-  await loadProjects()
-  await loadReports()
+  loading.value = true
+  error.value = ""
+  try {
+    await loadProjects()
+    reports.value = await listReports(
+      selectedProjectId.value ? { project: selectedProjectId.value } : {},
+    )
+  } catch (err) {
+    error.value =
+      err instanceof ApiError ? err.message : "任务执行记录加载失败，请稍后重试。"
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(initialize)
@@ -55,49 +68,29 @@ onMounted(initialize)
         <p class="page-kicker">任务监控</p>
         <h2>任务执行情况</h2>
       </div>
-      <button class="secondary-button" @click="loadReports">刷新</button>
+      <div class="action-row">
+        <button v-if="selectedProjectId" class="ghost-button" @click="router.push('/monitoring')">
+          返回全部列表
+        </button>
+        <button class="secondary-button" @click="loadReports">刷新</button>
+      </div>
     </div>
 
-    <section class="panel filters-grid">
-      <label class="field">
-        <span>项目</span>
-        <select v-model="filters.project">
-          <option value="">全部</option>
-          <option v-for="project in projects" :key="project.id" :value="String(project.id)">
-            {{ project.project_name }}
-          </option>
-        </select>
-      </label>
-
-      <label class="field">
-        <span>状态</span>
-        <select v-model="filters.status">
-          <option value="">全部</option>
-          <option value="CHANGED">重大变更</option>
-          <option value="NO_CHANGE">无变更</option>
-          <option value="ERROR_CRAWL">执行失败</option>
-        </select>
-      </label>
-
-      <label class="field">
-        <span>开始日期</span>
-        <input v-model="filters.date_from" type="date" />
-      </label>
-
-      <label class="field">
-        <span>结束日期</span>
-        <input v-model="filters.date_to" type="date" />
-      </label>
-
-      <div class="action-row">
-        <button class="primary-button" @click="loadReports">应用筛选</button>
+    <section v-if="selectedProject" class="panel panel--compact">
+      <div class="page-header page-header--compact">
+        <div>
+          <p class="page-kicker">当前任务</p>
+          <h3>{{ selectedProject.project_name }}</h3>
+        </div>
+        <span class="badge">仅查看该任务执行记录</span>
       </div>
     </section>
 
-    <p v-if="error" class="error-text">{{ error }}</p>
-    <p v-else-if="loading">正在加载任务执行记录...</p>
+    <section class="monitoring-list">
+      <article v-if="reports.length === 0" class="panel empty-panel">
+        <p class="empty-state">当前没有可展示的任务执行记录。</p>
+      </article>
 
-    <section v-else class="monitoring-list">
       <article v-for="report in reports" :key="report.id" class="monitoring-row">
         <div class="monitoring-row__action">
           <button

@@ -122,18 +122,109 @@ class JudgeDiffServiceTest(SimpleTestCase):
 
         self.assertEqual(mock_client.chat.completions.create.call_count, 3)
 
-    @patch("apps.intelligence.services.llm_service.get_openai_client")
-    def test_judge_diff_invalid_json_raises_and_retries(self, mock_get_client):
-        """LLM 返回非 JSON → 重试，最终 raise LLMError。"""
+
+@override_settings(LLM_API_KEY="test-key", LLM_BASE_URL="https://test.example.com/v1")
+class GenerateIntelServiceTest(SimpleTestCase):
+    """测试 llm_service.generate_intel()。"""
+
+    @patch("apps.intelligence.services.llm_service.get_instructor_client")
+    def test_generate_intel_success(self, mock_get_client):
+        """generate_intel 正常调用，返回 IntelResult 实例。"""
+        from apps.intelligence.services.llm_service import generate_intel
+        from apps.intelligence.services.llm_client import IntelResult
+
+        expected = IntelResult(
+            change_summary="竞品新增AI绘图功能",
+            strategic_intent="拓展AI创作赛道",
+            action_suggestion="评估我方是否跟进AI绘图",
+            evidence_diff="+ 新增AI绘图模块",
+        )
         mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(content="这不是JSON"))]
-        mock_client.chat.completions.create.return_value = mock_response
+        mock_client.chat.completions.create.return_value = expected
         mock_get_client.return_value = mock_client
 
-        from apps.intelligence.services.llm_service import judge_diff
+        result = generate_intel("diff片段", "产品文档", [])
+        self.assertIsInstance(result, IntelResult)
+        self.assertEqual(result.change_summary, "竞品新增AI绘图功能")
+        self.assertEqual(result.strategic_intent, "拓展AI创作赛道")
+        self.assertEqual(result.action_suggestion, "评估我方是否跟进AI绘图")
+        self.assertEqual(result.evidence_diff, "+ 新增AI绘图模块")
+
+    @patch("apps.intelligence.services.llm_service.time.sleep")
+    @patch("apps.intelligence.services.llm_service.get_instructor_client")
+    def test_generate_intel_retry_exhausted(self, mock_get_client, mock_sleep):
+        """LLM 3 次失败 → raise LLMError。"""
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = Exception("API Error")
+        mock_get_client.return_value = mock_client
+
+        from apps.intelligence.services.llm_service import generate_intel
 
         with self.assertRaises(LLMError):
-            judge_diff("有变化的diff片段", "我方产品文档")
+            generate_intel("diff片段", "产品文档", [])
 
         self.assertEqual(mock_client.chat.completions.create.call_count, 3)
+
+
+class FormatFewShotsTest(SimpleTestCase):
+    """测试 _format_few_shots() 格式化。"""
+
+    def test_empty_list_returns_default_text(self):
+        """空列表 → '暂无反面案例'。"""
+        from apps.intelligence.services.llm_service import _format_few_shots
+
+        result = _format_few_shots([])
+        self.assertEqual(result, "暂无反面案例")
+
+
+@override_settings(LLM_API_KEY="test-key", LLM_BASE_URL="https://test.example.com/v1")
+class GetNegativeFewShotsDBTest(SimpleTestCase):
+    """测试 get_negative_few_shots() DB 查询。"""
+
+    databases = "__all__"
+
+    def test_query_returns_recent_5(self):
+        """有 7 条记录 → 返回最近 5 条。"""
+        from apps.intelligence.services.llm_service import get_negative_few_shots
+        from apps.intelligence.models import MonitorProject, IntelligenceFeed
+        from django.utils import timezone
+        from datetime import timedelta
+
+        project = MonitorProject.objects.create(
+            project_name="Test",
+            competitor_urls=[],
+            cron="0 9 * * *",
+        )
+
+        for i in range(7):
+            IntelligenceFeed.objects.create(
+                project=project,
+                job_status=IntelligenceFeed.JobStatus.CHANGED,
+                change_summary=f"摘要{i}",
+                user_feedback=-1,
+                user_comment=f"评语{i}",
+                published_at=timezone.now() - timedelta(hours=7 - i),
+            )
+
+        result = get_negative_few_shots(project.id)
+        self.assertEqual(len(result), 5)
+        summaries = [r.change_summary for r in result]
+        self.assertIn("摘要6", summaries)
+        self.assertIn("摘要2", summaries)
+        self.assertNotIn("摘要0", summaries)
+        self.assertNotIn("摘要1", summaries)
+
+    def test_query_no_records_returns_empty(self):
+        """无记录 → 返回空列表。"""
+        from apps.intelligence.services.llm_service import get_negative_few_shots
+        from apps.intelligence.models import MonitorProject
+
+        project = MonitorProject.objects.create(
+            project_name="Test2",
+            competitor_urls=[],
+            cron="0 9 * * *",
+        )
+
+        result = get_negative_few_shots(project.id)
+        self.assertEqual(result, [])
+

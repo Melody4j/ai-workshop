@@ -140,3 +140,95 @@ def _extract_json(text: str) -> dict | None:
             pass
 
     return None
+
+
+def get_negative_few_shots(project_id: int, limit: int = 5) -> list:
+    """查询最近 N 条被标记为"毫无意义"的历史情报（Negative Few-Shot）。
+
+    Args:
+        project_id: 项目 ID
+        limit: 最多返回条数（默认 5）
+
+    Returns:
+        IntelligenceFeed 列表（按 published_at 倒序），无记录返回空列表
+    """
+    from apps.intelligence.models import IntelligenceFeed
+
+    return list(
+        IntelligenceFeed.objects.filter(
+            project_id=project_id,
+            user_feedback=-1,
+        )
+        .order_by("-published_at")[:limit]
+    )
+
+
+def _format_few_shots(few_shots: list) -> str:
+    """将 Negative Few-Shot 列表格式化为 prompt 文本。
+
+    Args:
+        few_shots: IntelligenceFeed 列表
+
+    Returns:
+        格式化后的文本；空列表返回"暂无反面案例"
+    """
+    if not few_shots:
+        return "暂无反面案例"
+
+    parts = []
+    for idx, feed in enumerate(few_shots, 1):
+        parts.append(f"### 反面案例 {idx}")
+        parts.append(f"- 摘要：{feed.change_summary}")
+        parts.append(f"- 用户评语（为何无意义）：{feed.user_comment or '无评语'}")
+        parts.append("")
+
+    return "\n".join(parts).strip()
+
+
+@retry(max_retries=3, delay=30)
+def generate_intel(
+    diff_text: str,
+    self_product_doc: str,
+    few_shots: list,
+) -> IntelResult:
+    """LLM 情报生成：instructor + Pydantic 结构化输出 4 字段。
+
+    Args:
+        diff_text: 有意义的 diff 片段
+        self_product_doc: 我方产品锚定文档
+        few_shots: Negative Few-Shot 列表（IntelligenceFeed 对象列表）
+
+    Returns:
+        IntelResult 实例（4 字段：change_summary / strategic_intent / action_suggestion / evidence_diff）
+
+    Raises:
+        LLMError: 重试耗尽后抛出
+    """
+    doc_context = self_product_doc if self_product_doc and self_product_doc.strip() else "（暂无产品锚定文档）"
+    few_shots_text = _format_few_shots(few_shots)
+
+    system_prompt = load_prompt("intel_system", self_product_doc=doc_context)
+    user_prompt = load_prompt(
+        "intel_user",
+        diff_text=diff_text,
+        negative_few_shots=few_shots_text,
+    )
+
+    client = get_instructor_client()
+    result = client.chat.completions.create(
+        model=settings.LLM_MODEL,
+        response_model=IntelResult,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=settings.LLM_TEMPERATURE,
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+
+    logger.info(
+        f"[LLM情报生成] 完成，"
+        f"change_summary={len(result.change_summary)}字符, "
+        f"strategic_intent={len(result.strategic_intent)}字符"
+    )
+    return result

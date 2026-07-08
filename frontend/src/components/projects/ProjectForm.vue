@@ -516,7 +516,7 @@ function onSubmit() {
     <el-dialog v-model="cronDialogVisible" title="配置 Cron 表达式" width="960px">
       <Vue3CronPlusPicker
         :expression="cronPickerExpression"
-        hide-component="second,year"
+        hide-component="year"
         @fill="fillCronExpression"
         @hide="closeCronDialog"
       />

@@ -133,7 +133,7 @@ status: draft
 
 ### Task T1: 新增依赖与 LLM 配置
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/requirements/base.txt`、`backend/config/settings.py`、`backend/.env.example`
@@ -167,7 +167,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `004-llm-intel-pipeline`
-    commit: `<TBD>`
+    commit: `d71b651`
     pr: `<TBD>`
     changed_files:
       - `backend/requirements/base.txt`
@@ -178,7 +178,7 @@ status: draft
 
 ### Task T2: 创建 5 套 Prompt 模板
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/prompts/`
@@ -215,20 +215,21 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `004-llm-intel-pipeline`
-    commit: `<TBD>`
+    commit: `43cdb4e`
     pr: `<TBD>`
     changed_files:
       - `backend/prompts/denoise.md`
       - `backend/prompts/diff_judge.md`
       - `backend/prompts/intel_system.md`
       - `backend/prompts/intel_user.md`
+      - `backend/apps/intelligence/services/prompt_loader.py`
       - `backend/apps/intelligence/tests/test_prompt_loading.py`
 
 ---
 
 ### Task T3: 实现 LLM Client 封装
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`
@@ -279,7 +280,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `004-llm-intel-pipeline`
-    commit: `<TBD>`
+    commit: `0cdeb53`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/services/llm_client.py`
@@ -290,7 +291,7 @@ status: draft
 
 ### Task T4: 实现 LLM 重试机制
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`
@@ -331,7 +332,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `004-llm-intel-pipeline`
-    commit: `<TBD>`
+    commit: `ca3ee8e`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/services/retry.py`
@@ -341,7 +342,7 @@ status: draft
 
 ### Task T5: 实现 LLM 降噪服务
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`
@@ -387,7 +388,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `004-llm-intel-pipeline`
-    commit: `<TBD>`
+    commit: `5efc4b2`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/services/llm_service.py`
@@ -397,7 +398,7 @@ status: draft
 
 ### Task T6: 实现 diff_service（文本 diff + 截断）
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`
@@ -440,7 +441,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `004-llm-intel-pipeline`
-    commit: `<TBD>`
+    commit: `72033db`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/services/diff_service.py`
@@ -450,7 +451,7 @@ status: draft
 
 ### Task T7: 实现 LLM diff 判断服务
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`
@@ -493,7 +494,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `004-llm-intel-pipeline`
-    commit: `<TBD>`
+    commit: `650233b`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/services/llm_service.py`
@@ -503,7 +504,7 @@ status: draft
 
 ### Task T8: 实现 LLM 情报生成服务（instructor + Pydantic）
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`
@@ -548,7 +549,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `004-llm-intel-pipeline`
-    commit: `<TBD>`
+    commit: `5cb216f`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/services/llm_service.py`
@@ -558,7 +559,7 @@ status: draft
 
 ### Task T9: 实现 report_service（Jinja2 HTML/MD 报告渲染）
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`、`backend/templates/reports/`
@@ -608,7 +609,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `004-llm-intel-pipeline`
-    commit: `<TBD>`
+    commit: `63c5a44`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/services/report_service.py`
@@ -620,7 +621,7 @@ status: draft
 
 ### Task T10: 实现 file_storage 覆盖写入支持
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`
@@ -657,7 +658,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `004-llm-intel-pipeline`
-    commit: `<TBD>`
+    commit: `ed27804`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/services/file_storage.py`
@@ -667,7 +668,7 @@ status: draft
 
 ### Task T11: scheduler_service 集成 LLM 全链路
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/scheduler_service.py`
@@ -728,7 +729,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `004-llm-intel-pipeline`
-    commit: `<TBD>`
+    commit: `36d4a36`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/services/scheduler_service.py`
@@ -738,7 +739,7 @@ status: draft
 
 ### Task T12: 端到端集成测试
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/tests/`
@@ -775,7 +776,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `004-llm-intel-pipeline`
-    commit: `<TBD>`
+    commit: `5841597`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/tests/test_llm_pipeline_e2e.py`
@@ -784,7 +785,7 @@ status: draft
 
 ### Task T13: .env 文件创建与文档更新
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/.env`、`backend/.gitignore`
@@ -820,10 +821,9 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `004-llm-intel-pipeline`
-    commit: `<TBD>`
+    commit: `58d2089`
     pr: `<TBD>`
     changed_files:
-      - `backend/.gitignore`
       - `CLAUDE.md`
 
 ---

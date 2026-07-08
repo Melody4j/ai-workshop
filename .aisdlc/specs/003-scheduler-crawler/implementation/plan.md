@@ -119,7 +119,7 @@ status: draft
 
 ### Task T1: 安装依赖与配置 settings.py
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/requirements/base.txt`、`backend/config/settings.py`
@@ -178,17 +178,13 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `003-scheduler-crawler`
-    commit: `<TBD>`
-    pr: `<TBD>`
-    changed_files:
-      - `backend/requirements/base.txt`
-      - `backend/config/settings.py`
+    commit: `cfe3e4c`
 
 ---
 
 ### Task T2: MonitorProject 新增 next_run_at 字段 + cron 匹配逻辑
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/models.py`、`backend/apps/intelligence/services/`
@@ -267,19 +263,9 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `003-scheduler-crawler`
-    commit: `<TBD>`
-    pr: `<TBD>`
-    changed_files:
-      - `backend/apps/intelligence/models.py`
-      - `backend/apps/intelligence/migrations/0003_monitorproject_next_run_at.py`
-      - `backend/apps/intelligence/services/cron_matcher.py`
-      - `backend/apps/intelligence/tests/test_cron_matcher.py`
+    commit: `a0d0aba`
 
----
-
-### Task T3: 实现采集服务（crawler_service）
-
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`
@@ -400,17 +386,13 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `003-scheduler-crawler`
-    commit: `<TBD>`
-    pr: `<TBD>`
-    changed_files:
-      - `backend/apps/intelligence/services/crawler_service.py`
-      - `backend/apps/intelligence/tests/test_crawler_service.py`
+    commit: `a37df06`
 
 ---
 
 ### Task T4: 实现调度服务（scheduler_service）
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`
@@ -501,17 +483,9 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `003-scheduler-crawler`
-    commit: `<TBD>`
-    pr: `<TBD>`
-    changed_files:
-      - `backend/apps/intelligence/services/scheduler_service.py`
-      - `backend/apps/intelligence/tests/test_scheduler_service.py`
+    commit: `c472319` 集成 django-apscheduler 与 Django 启动注册
 
----
-
-### Task T5: 集成 django-apscheduler 与 Django 启动注册
-
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/apps.py`
@@ -594,17 +568,13 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `003-scheduler-crawler`
-    commit: `<TBD>`
-    pr: `<TBD>`
-    changed_files:
-      - `backend/apps/intelligence/scheduler.py`
-      - `backend/apps/intelligence/apps.py`
+    commit: `b4842b4`
 
 ---
 
 ### Task T6: 端到端验证与真实站点测试
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`backend/`
@@ -682,10 +652,7 @@ status: draft
 - 审计信息：
   - repo: `root`
     branch: `003-scheduler-crawler`
-    commit: `<TBD>`
-    pr: `<TBD>`
-    changed_files:
-      - `backend/apps/intelligence/tests/test_e2e_crawl.py`
+    commit: `fc7be76`
 
 ---
 

@@ -362,7 +362,7 @@
 
 ### Task T4: 设计并实现后端 API
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`/Users/melody/code/ai-workshop`
@@ -409,25 +409,32 @@
 - Expected: PASS（API 契约测试通过）
 - Run: `python3 backend/manage.py check`
 - Expected: PASS（URL 与应用注册无错误）
+- 验证结果摘要：
+  - `/Users/melody/code/ai-workshop/.venv/bin/python /Users/melody/code/ai-workshop/backend/manage.py test apps.intelligence.tests.test_api` -> PASS（5 个 API 测试通过，覆盖任务 CRUD、报告列表/详情、评分 CRUD）
+  - `/Users/melody/code/ai-workshop/.venv/bin/python /Users/melody/code/ai-workshop/backend/manage.py check` -> PASS（`System check identified no issues (0 silenced).`）
+  - `curl --max-time 5 -s http://127.0.0.1:8001/api/projects` -> PASS（临时 Django 实例返回任务列表 JSON）
+  - `curl --max-time 5 -s http://127.0.0.1:8001/api/reports` -> PASS（临时 Django 实例返回监控记录 JSON）
+  - `curl --max-time 5 -s -X POST http://127.0.0.1:8001/api/reports/1/rating ...` / `DELETE ...` -> PASS（评分写入与清空均成功）
 
 **步骤 4：提交（受 AUTO_COMMIT 控制）**
 - Commit message: `实现任务与报告评分相关后端接口`
 - 审计信息：
   - repo: `root`
     branch: `001-competitive-intel-agent`
-    commit: `<TBD>`
+    commit: `aa673b2`
     pr: `<TBD>`
     changed_files:
       - `backend/apps/intelligence/serializers.py`
-      - `backend/apps/intelligence/views.py`
-      - `backend/apps/intelligence/urls.py`
-      - `backend/config/urls.py`
+      - `backend/apps/intelligence/services/__init__.py`
       - `backend/apps/intelligence/services/report_seed.py`
       - `backend/apps/intelligence/tests/test_api.py`
+      - `backend/apps/intelligence/urls.py`
+      - `backend/apps/intelligence/views.py`
+      - `backend/config/urls.py`
 
 ### Task T5: 实现前端任务 CRUD、报告列表与评分 CRUD
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`/Users/melody/code/ai-workshop`
@@ -473,26 +480,38 @@
 - Expected: PASS（联调期间后端仍保持有效）
 - Run: 手工走查 `/projects`、`/projects/new`、`/reports`、`/reports/:id`
 - Expected: PASS（任务 CRUD、报告浏览、评分 CRUD 主链路可走通）
+- 验证结果摘要：
+  - `npm run build`（workdir=`/Users/melody/code/ai-workshop/frontend`）-> PASS（Vite build 成功）
+  - `/Users/melody/code/ai-workshop/.venv/bin/python /Users/melody/code/ai-workshop/backend/manage.py check` -> PASS（前端联调改动未影响 Django 配置）
+  - `curl --max-time 5 -s http://127.0.0.1:4173/cockpit` / `/projects` / `/monitoring` / `/monitoring/1` -> PASS（Vue 开发服务器路由均返回应用壳）
+  - `curl --max-time 5 -s http://127.0.0.1:8001/api/projects` / `/api/reports` -> PASS（任务管理、任务监控所依赖的列表接口可用）
+  - 说明：原有 `127.0.0.1:8000` Django 进程响应不稳定，本批次手工联调改用临时 `127.0.0.1:8001` 实例完成 API 冒烟，未修改用户现有进程
 
 **步骤 4：提交（受 AUTO_COMMIT 控制）**
 - Commit message: `实现任务管理与报告评分前端界面`
 - 审计信息：
   - repo: `root`
     branch: `001-competitive-intel-agent`
-    commit: `<TBD>`
+    commit: `aae4221`
     pr: `<TBD>`
     changed_files:
+      - `frontend/src/App.vue`
       - `frontend/src/api/client.ts`
       - `frontend/src/api/projects.ts`
       - `frontend/src/api/reports.ts`
-      - `frontend/src/router/index.ts`
-      - `frontend/src/views/projects/ProjectListPage.vue`
-      - `frontend/src/views/projects/ProjectFormPage.vue`
-      - `frontend/src/views/reports/ReportListPage.vue`
-      - `frontend/src/views/reports/ReportDetailPage.vue`
+      - `frontend/src/components/common/AppShell.vue`
       - `frontend/src/components/projects/ProjectForm.vue`
       - `frontend/src/components/reports/RatingForm.vue`
-      - `frontend/src/components/common/AppShell.vue`
+      - `frontend/src/router/index.ts`
+      - `frontend/src/styles/main.css`
+      - `frontend/src/tests/README.md`
+      - `frontend/src/views/dashboard/CockpitPage.vue`
+      - `frontend/src/views/HomePage.vue`（删除）
+      - `frontend/src/views/projects/ProjectFormPage.vue`
+      - `frontend/src/views/projects/ProjectListPage.vue`
+      - `frontend/src/views/reports/ReportDetailPage.vue`
+      - `frontend/src/views/reports/ReportListPage.vue`
+      - `frontend/vite.config.ts`
 
 ---
 

@@ -256,6 +256,78 @@ a {
   width: 100%;
 }
 
+/* CronPicker 组件样式 */
+.cron-picker {
+  display: grid;
+  gap: 16px;
+}
+
+.cron-tabs .el-tabs__header {
+  margin-bottom: 0;
+}
+
+.cron-tabs .el-tabs__content {
+  padding: 16px;
+  border: 1px solid var(--el-border-color-light);
+  border-top: 0;
+}
+
+.cron-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.cron-line:last-child {
+  margin-bottom: 0;
+}
+
+.cron-line .el-radio {
+  margin-right: 0;
+}
+
+.cron-line > span {
+  font-size: 0.875rem;
+  color: #555;
+  white-space: nowrap;
+}
+
+.cron-select {
+  min-width: 200px;
+  max-width: 400px;
+}
+
+.cron-week-select {
+  width: 100px;
+}
+
+.cron-preview {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--el-border-color-light);
+  border-top: 0;
+}
+
+.cron-preview__row {
+  display: grid;
+  gap: 6px;
+}
+
+.cron-preview__label {
+  font-size: 0.75rem;
+  color: #999;
+  letter-spacing: 0.08em;
+}
+
+.cron-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 .cron-semantic {
   display: flex;
   align-items: baseline;

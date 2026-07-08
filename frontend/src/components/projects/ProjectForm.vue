@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { UploadFile } from "element-plus"
 import { computed, reactive, ref, watch } from "vue"
-import { Vue3CronPlusPicker } from "vue3-cron-plus-picker"
-import "vue3-cron-plus-picker/style.css"
+
+import CronPicker from "../cron/CronPicker.vue"
+import { cron2label, toBackendCron, toQuartzCron } from "../cron/cron-utils"
 
 import type {
   CompetitorContextInput,
@@ -88,160 +89,7 @@ const canSubmit = computed(
     competitors.value.every((item) => item.title.trim() && item.url.trim()),
 )
 
-function normalizeQuartzDayAndWeek(day: string, week: string) {
-  if (week === "*" || week === "?") {
-    return { day, week: "?" }
-  }
-
-  if (day === "*" || day === "?") {
-    return { day: "?", week }
-  }
-
-  return { day, week: "?" }
-}
-
-function toPickerCronExpression(expression: string): string {
-  const segments = expression.trim().split(/\s+/).filter(Boolean)
-
-  if (segments.length === 6 || segments.length === 7) {
-    return expression.trim()
-  }
-
-  if (segments.length !== 5) {
-    return "0 * * * * ?"
-  }
-
-  const [minute, hour, day, month, week] = segments
-  const normalized = normalizeQuartzDayAndWeek(day, week)
-
-  return `0 ${minute} ${hour} ${normalized.day} ${month} ${normalized.week}`
-}
-
-function toBackendCronExpression(expression: string): string {
-  const segments = expression.trim().split(/\s+/).filter(Boolean)
-
-  if (segments.length === 5) {
-    return expression.trim()
-  }
-
-  if (segments.length < 6) {
-    return form.cron.trim() || "* * * * *"
-  }
-
-  const [, minute, hour, day, month, week] = segments
-  const normalizedDay = day === "?" ? "*" : day
-  const normalizedWeek = week === "?" ? "*" : week
-
-  return `${minute} ${hour} ${normalizedDay} ${month} ${normalizedWeek}`
-}
-
-const weekLabels = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
-
-function cronToChinese(cron: string): string {
-  const parts = cron.trim().split(/\s+/)
-  if (parts.length !== 5) return "无效的 cron 表达式"
-
-  const [minute, hour, day, month, week] = parts
-  const isWildcard = (v: string) => v === "*" || v === "?"
-
-  // -- 日期部分 --
-  const dateParts: string[] = []
-
-  if (!isWildcard(month)) {
-    if (month.includes(",")) {
-      dateParts.push(month.split(",").map(m => `${m}月`).join("、"))
-    } else if (month.includes("-")) {
-      const [a, b] = month.split("-")
-      dateParts.push(`${a}月到${b}月`)
-    } else if (month.startsWith("*/")) {
-      dateParts.push(`每${month.slice(2)}个月`)
-    } else {
-      dateParts.push(`${month}月`)
-    }
-  }
-
-  if (!isWildcard(day)) {
-    if (day.includes(",")) {
-      dateParts.push(day.split(",").map(d => `${d}日`).join("、"))
-    } else if (day.includes("-")) {
-      const [a, b] = day.split("-")
-      dateParts.push(`${a}日到${b}日`)
-    } else if (day.startsWith("*/")) {
-      dateParts.push(`每${day.slice(2)}天`)
-    } else {
-      dateParts.push(`${day}日`)
-    }
-  }
-
-  if (!isWildcard(week)) {
-    if (week.includes(",")) {
-      dateParts.push(week.split(",").map(w => weekLabels[parseInt(w)] || w).join("、"))
-    } else if (week.includes("-")) {
-      const [a, b] = week.split("-")
-      dateParts.push(`${weekLabels[parseInt(a)] || a}到${weekLabels[parseInt(b)] || b}`)
-    } else {
-      dateParts.push(`每${weekLabels[parseInt(week)] || week}`)
-    }
-  }
-
-  // -- 时间部分 --
-  const mIsSingle = /^\d+$/.test(minute)
-  const hIsSingle = /^\d+$/.test(hour)
-  let timeStr = ""
-
-  if (isWildcard(minute) && isWildcard(hour)) {
-    timeStr = "每分钟"
-  } else if (minute.startsWith("*/") && isWildcard(hour)) {
-    timeStr = `每${minute.slice(2)}分钟`
-  } else if (isWildcard(minute) && hour.startsWith("*/")) {
-    timeStr = `每${hour.slice(2)}小时的每分钟`
-  } else if (minute.startsWith("*/") && hour.startsWith("*/")) {
-    timeStr = `每${hour.slice(2)}小时每${minute.slice(2)}分钟`
-  } else if (mIsSingle && hIsSingle) {
-    timeStr = `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`
-  } else if (minute === "0" && isWildcard(hour)) {
-    timeStr = "每小时整点"
-  } else if (minute === "0" && hour.startsWith("*/")) {
-    timeStr = `每${hour.slice(2)}小时整点`
-  } else if (minute === "0" && hour.includes("-")) {
-    const [a, b] = hour.split("-")
-    timeStr = `${a.padStart(2, "0")}:00 到 ${b.padStart(2, "0")}:00 的整点`
-  } else if (mIsSingle && isWildcard(hour)) {
-    timeStr = `每小时的第${minute}分钟`
-  } else if (mIsSingle && hour.startsWith("*/")) {
-    timeStr = `每${hour.slice(2)}小时的第${minute}分钟`
-  } else if (mIsSingle && hour.includes(",")) {
-    timeStr = hour.split(",").map(h => `${h.padStart(2, "0")}:${minute.padStart(2, "0")}`).join("、")
-  } else if (minute.includes(",") && isWildcard(hour)) {
-    timeStr = `每小时的${minute.split(",").map(m => `${m}分`).join("、")}`
-  } else if (minute.includes(",") && hIsSingle) {
-    timeStr = `${hour.padStart(2, "0")}时${minute.split(",").map(m => `${m}分`).join("、")}`
-  } else if (minute.includes("-") && isWildcard(hour)) {
-    const [a, b] = minute.split("-")
-    timeStr = `每小时的${a}到${b}分`
-  } else if (minute.includes("-") && hIsSingle) {
-    const [a, b] = minute.split("-")
-    timeStr = `${hour.padStart(2, "0")}时${a}到${b}分`
-  } else if (minute.startsWith("*/") && hIsSingle) {
-    timeStr = `${hour.padStart(2, "0")}时每${minute.slice(2)}分钟`
-  } else {
-    const hDesc = isWildcard(hour) ? "每小时" : hour
-    const mDesc = isWildcard(minute) ? "每分钟" : minute
-    timeStr = `${hDesc} ${mDesc}`
-  }
-
-  // -- 组合 --
-  const dateStr = dateParts.join("、")
-  if (dateStr) {
-    return `${dateStr} ${timeStr}执行`
-  }
-  if (timeStr.startsWith("每")) {
-    return `${timeStr}执行`
-  }
-  return `每天 ${timeStr}执行`
-}
-
-const cronSemantic = computed(() => cronToChinese(form.cron))
+const cronSemantic = computed(() => cron2label(toQuartzCron(form.cron)))
 
 function addCompetitor() {
   competitors.value.push(createEmptyCompetitor())
@@ -304,7 +152,7 @@ function clearCompetitorFile(index: number) {
 }
 
 function openCronDialog() {
-  cronPickerExpression.value = toPickerCronExpression(form.cron)
+  cronPickerExpression.value = toQuartzCron(form.cron)
   cronDialogVisible.value = true
 }
 
@@ -313,13 +161,12 @@ function closeCronDialog() {
 }
 
 function fillCronExpression(expression: string) {
-  form.cron = toBackendCronExpression(expression)
-  cronPickerExpression.value = expression
+  form.cron = toBackendCron(expression)
   cronDialogVisible.value = false
 }
 
 function normalizeManualCronValue() {
-  form.cron = toBackendCronExpression(form.cron)
+  form.cron = toBackendCron(form.cron)
 }
 
 function onSubmit() {
@@ -340,7 +187,7 @@ function onSubmit() {
     self_product_doc: form.self_product_doc,
     self_product_doc_name: form.self_product_doc_name.trim(),
     competitor_contexts: competitorContexts,
-    cron: toBackendCronExpression(form.cron),
+    cron: toBackendCron(form.cron),
     feishu_webhook: form.feishu_webhook.trim(),
     is_active: form.is_active,
   })
@@ -514,9 +361,8 @@ function onSubmit() {
     </el-form>
 
     <el-dialog v-model="cronDialogVisible" title="配置 Cron 表达式" width="960px">
-      <Vue3CronPlusPicker
+      <CronPicker
         :expression="cronPickerExpression"
-        hide-component="year"
         @fill="fillCronExpression"
         @hide="closeCronDialog"
       />

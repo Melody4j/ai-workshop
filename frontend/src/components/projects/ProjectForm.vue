@@ -13,6 +13,7 @@ import type {
 interface CompetitorFormRow {
   title: string
   url: string
+  crawl_hint: string
   supplement_doc_name: string
   supplement_doc_content: string
 }
@@ -45,6 +46,7 @@ function createEmptyCompetitor(): CompetitorFormRow {
   return {
     title: "",
     url: "",
+    crawl_hint: "",
     supplement_doc_name: "",
     supplement_doc_content: "",
   }
@@ -62,6 +64,7 @@ function mergeCompetitors(
     return {
       title: item.title ?? matchedContext?.title ?? "",
       url: item.url ?? matchedContext?.url ?? "",
+      crawl_hint: item.crawl_hint ?? "",
       supplement_doc_name: matchedContext?.supplement_doc_name ?? "",
       supplement_doc_content: matchedContext?.supplement_doc_content ?? "",
     }
@@ -173,6 +176,7 @@ function onSubmit() {
   const competitorUrls: CompetitorInput[] = competitors.value.map((item) => ({
     title: item.title.trim(),
     url: item.url.trim(),
+    crawl_hint: item.crawl_hint.trim(),
   }))
   const competitorContexts: CompetitorContextInput[] = competitors.value.map((item) => ({
     title: item.title.trim(),
@@ -266,6 +270,15 @@ function onSubmit() {
               <div class="competitor-row competitor-row--stacked">
                 <el-input v-model="competitor.title" placeholder="Lovable" />
                 <el-input v-model="competitor.url" placeholder="https://lovable.dev" />
+              </div>
+
+              <div class="competitor-hint">
+                <el-input
+                  v-model="competitor.crawl_hint"
+                  placeholder='采集提示词（可选）：如"爬取定价页、功能列表页"'
+                  :rows="2"
+                  type="textarea"
+                />
               </div>
 
               <div class="field-block">

@@ -57,3 +57,83 @@ class DenoiseServiceTest(SimpleTestCase):
             denoise("这是一段足够长的MD内容用于测试")
 
         self.assertEqual(mock_client.chat.completions.create.call_count, 3)
+
+
+@override_settings(LLM_API_KEY="test-key", LLM_BASE_URL="https://test.example.com/v1")
+class JudgeDiffServiceTest(SimpleTestCase):
+    """测试 llm_service.judge_diff()。"""
+
+    @patch("apps.intelligence.services.llm_service.get_openai_client")
+    def test_judge_diff_meaningful_change(self, mock_get_client):
+        """LLM 判断有意义的变 → 返回 {has_meaningful_change: True}。"""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(
+            content='{"has_meaningful_change": true, "reason": "功能更新"}'
+        ))]
+        mock_client.chat.completions.create.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        from apps.intelligence.services.llm_service import judge_diff
+
+        result = judge_diff("有变化的diff片段", "我方产品文档")
+        self.assertTrue(result["has_meaningful_change"])
+        self.assertEqual(result["reason"], "功能更新")
+
+    @patch("apps.intelligence.services.llm_service.get_openai_client")
+    def test_judge_diff_no_meaningful_change(self, mock_get_client):
+        """LLM 判断无意义的变 → 返回 {has_meaningful_change: False}。"""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(
+            content='{"has_meaningful_change": false, "reason": "仅排版调整"}'
+        ))]
+        mock_client.chat.completions.create.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        from apps.intelligence.services.llm_service import judge_diff
+
+        result = judge_diff("排版变化的diff", "我方产品文档")
+        self.assertFalse(result["has_meaningful_change"])
+        self.assertEqual(result["reason"], "仅排版调整")
+
+    @patch("apps.intelligence.services.llm_service.get_openai_client")
+    def test_judge_diff_empty_diff_returns_false(self, mock_get_client):
+        """空 diff → 直接返回无意义，不调用 LLM。"""
+        from apps.intelligence.services.llm_service import judge_diff
+
+        result = judge_diff("", "我方产品文档")
+        self.assertFalse(result["has_meaningful_change"])
+        self.assertIn("无变化", result["reason"])
+        mock_get_client.assert_not_called()
+
+    @patch("apps.intelligence.services.llm_service.time.sleep")
+    @patch("apps.intelligence.services.llm_service.get_openai_client")
+    def test_judge_diff_retry_exhausted_raises_llm_error(self, mock_get_client, mock_sleep):
+        """LLM 3 次失败 → raise LLMError。"""
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = Exception("API Error")
+        mock_get_client.return_value = mock_client
+
+        from apps.intelligence.services.llm_service import judge_diff
+
+        with self.assertRaises(LLMError):
+            judge_diff("有变化的diff片段", "我方产品文档")
+
+        self.assertEqual(mock_client.chat.completions.create.call_count, 3)
+
+    @patch("apps.intelligence.services.llm_service.get_openai_client")
+    def test_judge_diff_invalid_json_raises_and_retries(self, mock_get_client):
+        """LLM 返回非 JSON → 重试，最终 raise LLMError。"""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content="这不是JSON"))]
+        mock_client.chat.completions.create.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        from apps.intelligence.services.llm_service import judge_diff
+
+        with self.assertRaises(LLMError):
+            judge_diff("有变化的diff片段", "我方产品文档")
+
+        self.assertEqual(mock_client.chat.completions.create.call_count, 3)

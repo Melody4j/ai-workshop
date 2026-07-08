@@ -62,7 +62,7 @@ def _fetch_with_playwright(url: str) -> str:
         with sync_playwright() as p:
             browser = p.chromium.launch()
             page = browser.new_page()
-            page.goto(url, timeout=30)
+            page.goto(url, timeout=30000)
             html = page.content()
             browser.close()
             return html

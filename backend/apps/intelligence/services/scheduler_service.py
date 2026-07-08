@@ -12,13 +12,15 @@ logger = logging.getLogger(__name__)
 def run_scan():
     """全局扫描：检查所有 active 项目是否到期，到期则逐 URL 采集入库。"""
     now = timezone.now()
+    now_local = timezone.localtime(now)
     active_projects = MonitorProject.objects.filter(is_active=True)
     project_count = active_projects.count()
-    logger.info(f"[扫描开始] 当前 {project_count} 个活跃项目, 时间 {now:%Y-%m-%d %H:%M:%S}")
+    logger.info(f"[扫描开始] 当前 {project_count} 个活跃项目, 时间 {now_local:%Y-%m-%d %H:%M:%S}")
 
     for project in active_projects:
         if project.next_run_at is not None and project.next_run_at > now:
-            logger.info(f"[跳过] 项目 {project.project_name} 未到期, 下次执行 {project.next_run_at:%Y-%m-%d %H:%M:%S}")
+            next_local = timezone.localtime(project.next_run_at)
+            logger.info(f"[跳过] 项目 {project.project_name} 未到期, 下次执行 {next_local:%Y-%m-%d %H:%M:%S}")
             continue
 
         logger.info(f"[到期] 项目 {project.project_name} (id={project.id}) 开始执行, cron={project.cron}")
@@ -53,8 +55,9 @@ def run_scan():
         # 更新 next_run_at
         project.next_run_at = get_next_run(project.cron, now)
         project.save(update_fields=["next_run_at"])
+        next_local = timezone.localtime(project.next_run_at)
         logger.info(
-            f"[项目完成] {project.project_name} 执行结束, 下次执行 {project.next_run_at:%Y-%m-%d %H:%M:%S}"
+            f"[项目完成] {project.project_name} 执行结束, 下次执行 {next_local:%Y-%m-%d %H:%M:%S}"
         )
 
     logger.info(f"[扫描结束] 本次扫描完成")

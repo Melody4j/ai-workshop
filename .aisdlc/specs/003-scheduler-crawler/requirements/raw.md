@@ -57,3 +57,27 @@
   3. 服务器停机期间错过的调度不补执行（单用户 MVP 容错策略）
 - 关键决策：上次执行时间 → 选择"不需要"；撤销"加字段"和"从快照推断"
 - 遗留歧义：无
+
+### R1-修订-1：调度匹配策略改为 next_run_at（2026-07-08，plan 评审触发）
+
+- 本轮结论：撤销 R1-Q4 的"5 分钟窗口匹配"和 R1-Q5 的"不需要字段"。改为：MonitorProject 新增 `next_run_at` 字段，用 croniter 计算下次执行时间；全局扫描 Job 每 5 分钟检查 `now >= project.next_run_at`，命中则执行并更新 `next_run_at` 为下一个未来匹配时间。
+- 本轮约束：
+  1. MonitorProject 新增 `next_run_at = DateTimeField(null=True, blank=True)`
+  2. 项目创建/更新时（save 调用）重算 next_run_at（cron 变更立即生效）
+  3. 执行后更新 next_run_at = croniter.get_next(cron, now)
+  4. cron 精度仍限 5 分钟（扫描间隔），但 cron 表达式分钟位无需对齐到 5 的倍数
+  5. 服务器停机后重启，若 next_run_at 已过，下一个扫描周期会执行一次（非补执行所有错过次数）
+- 本轮修正：撤销 Q4 约束 1-2（5 分钟窗口对齐与匹配逻辑）；撤销 Q5 约束 2-3（不加字段、不补执行）
+- 关键决策：调度匹配 → next_run_at 字段 + croniter 计算；放弃 5 分钟窗口匹配
+- 遗留歧义：无
+
+### R1-Q6：raw_markdown 与 clean_markdown 语义（2026-07-08，plan 评审触发）
+
+- 本轮结论：raw_markdown = httpx/Playwright 返回的原始 HTML（不做 html2text）；clean_markdown = BeautifulSoup 去噪后 HTML 经 html2text 转换的 MD。
+- 本轮约束：
+  1. raw_markdown 存原始 HTML 字符串
+  2. clean_markdown 存去噪后 MD 字符串
+  3. Playwright 降级时，raw_markdown 和 clean_markdown 都基于 Playwright 的 HTML 重新生成
+  4. markdown 行数判断（< 3 行降级）基于 clean_markdown
+- 关键决策：raw/clean 语义 → raw=原始HTML, clean=去噪后MD
+- 遗留歧义：无

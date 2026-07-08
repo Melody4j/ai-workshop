@@ -4,7 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 仓库现状
 
-全新仓库，当前**无源码**，仅含需求文档（`.aisdlc/specs/`）与 README。技术栈为 Python。所有架构与不变量均来自 `.aisdlc/specs/001-competitive-intel-agent/requirements/`（raw / solution / prd / prototype 四份文档为唯一决策入口）。
+Django 单体应用，后端位于 `backend/`。已实现：采集调度（Spec 003）、LLM 系统接入与竞品分析全流程（Spec 004）。技术栈为 Python。所有架构与不变量均来自 `.aisdlc/specs/001-competitive-intel-agent/requirements/`（raw / solution / prd / prototype 四份文档为唯一决策入口）。
+
+**已实现模块：**
+- `apps/intelligence/services/crawler_service.py`：httpx + BS 去噪采集
+- `apps/intelligence/services/scheduler_service.py`：全局扫描 + LLM 全链路串接
+- `apps/intelligence/services/llm_service.py`：3 次独立 LLM 调用（降噪 / diff判断 / 情报生成）
+- `apps/intelligence/services/diff_service.py`：difflib 文本 diff + 8000 字符截断
+- `apps/intelligence/services/report_service.py`：Jinja2 HTML/MD 报告渲染
+- `apps/intelligence/services/file_storage.py`：快照文件落盘（raw_html / BS clean_md / LLM clean_md）
+- `apps/intelligence/services/llm_client.py`：OpenAI 兼容 client + IntelResult Pydantic schema
+- `apps/intelligence/services/retry.py`：通用重试装饰器（3次/30s/耗尽 raise LLMError）
+- `apps/intelligence/services/prompt_loader.py`：Prompt 模板加载（str.replace 注入）
+- `prompts/`：4 套 Prompt 模板（denoise / diff_judge / intel_system / intel_user）
+- `templates/reports/`：Jinja2 报告模板（report.html.j2 / report.md.j2）
+
+**LLM 配置：** `backend/.env`（gitignored），参考 `backend/.env.example`
 
 ## 项目背景（Spec 001：自动化竞争情报监控代理）
 
@@ -40,8 +55,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 关键不变量（实现时必须遵守）
 
 1. 快照 append-only——SQLite 触发器硬约束 `UPDATE/DELETE → RAISE(ABORT)`
-2. 降噪 LLM 与情报生成 LLM 是**独立两次调用**，不得合并
-3. 情报生成 LLM 仅 diff 非空时触发，不得全量调用
+2. 降噪 LLM、diff 判断 LLM 与情报生成 LLM 是**独立三次调用**，不得合并
+3. 情报生成 LLM 仅 LLM diff 判断有意义时触发，不得全量调用
 4. 情报输出固定 4 字段，**不含价值度字段**（修订-3 已移除）
 5. has_change=True → 推飞书 + 存报告；has_change=False → 熔断退出
 6. 收件箱仅展示 `job_status=CHANGED`；`NO_CHANGE`/`ERROR_CRAWL` 仅 Django Admin 可见
@@ -56,7 +71,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 数据模型（3 张表）
 
 - **MonitorProject**：监控项目配置（`self_product_doc` Nullable / `competitor_urls` JSON / `feishu_webhook` / `cron` / `refined_rules` 占位 / `is_active`）
-- **DataSnapshot**：快照表（append-only，存 `raw_markdown` + `clean_markdown` + `fetch_time`）
+- **DataSnapshot**：快照表（append-only，存 `raw_html_path` + `clean_md_path`（指向 LLM 降噪后 MD）+ `fetch_time`）
 - **IntelligenceFeed**：情报表（`job_status` ∈ {CHANGED, NO_CHANGE, ERROR_CRAWL} + 4 字段 + `user_feedback` + `user_comment` + `html_report_path` + `md_table_path`）
 
 ## 页面与入口
@@ -65,13 +80,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **独立 HTML 网页**：收件箱列表页 `/`（P-003，仅 CHANGED）、情报详情页 `/view/intel/{id}`（P-004，含反馈按钮）、HTML 报告预览页 `/view/html/{id}`（P-005）
 - **飞书卡片**（D-001）：变化摘要正文 + "在线预览"按钮（跳转 P-005）+ "下载 MD"按钮
 
-## Spec 002：爬虫可行性验证（进行中）
+## Spec 002：爬虫可行性验证（已完成）
 
 位于 `.aisdlc/specs/002-crawler-feasibility-test/requirements/raw.md`，验证 httpx + html2text + 规则去噪（**不用 LLM**）的最小 MVP。规则：
 - httpx 优先；当 markdown < 3 行时降级 Playwright（JS 注入）
 - 去噪用 BeautifulSoup 去除 nav/footer/script/style，不使用 LLM
 - 去噪后 MD 输出到 `/Users/melody/Desktop/ai-workshop-test`，每站一个 `.md`，文件名为域名
 - 测试目标站点：ihuiwa.com、x-design.com、piccopilot.com、weshop.ai、bandy.ai、thenewblack.ai、lovable.dev
+
+## Spec 003：采集调度层（已完成）
+
+位于 `.aisdlc/specs/003-scheduler-crawler/`，实现 django-apscheduler 日级调度 + httpx/BS 采集 + DataSnapshot append-only 入库。核心组件：`scheduler_service.py`（run_scan 全局扫描）、`crawler_service.py`（fetch_and_clean）、`file_storage.py`（快照落盘）、`cron_matcher.py`（cron 表达式解析）。
+
+## Spec 004：LLM 系统接入与竞品分析全流程（已完成）
+
+位于 `.aisdlc/specs/004-llm-intel-pipeline/`，在 Spec 003 采集调度层之上补齐 LLM 链路。核心链路：
+1. BS 去噪 → LLM 语义降噪（第 1 次 LLM 调用）→ `clean_md_path` 指向 LLM 版本
+2. 文本 diff（difflib）→ diff 为空熔断 `NO_CHANGE`
+3. LLM diff 判断（第 2 次 LLM 调用）→ 无意义熔断 `NO_CHANGE`
+4. LLM 情报生成（第 3 次 LLM 调用，instructor + Pydantic）→ 4 字段直出
+5. IntelligenceFeed(CHANGED) 入库 + Jinja2 HTML/MD 报告落盘
+
+**关键设计决策：**
+- OpenAI 兼容 API（覆盖 OpenAI/DeepSeek/通义/Moonshot），不引入多 provider
+- 3 次 LLM 调用独立，各有 @retry（3次/30s），耗尽 raise LLMError → ERROR_CRAWL
+- 首次爬取跳过 diff（无历史快照），旧格式快照兼容（检测 `llm_` 前缀）
+- Negative Few-Shot 注入最近 5 条 `user_feedback=-1` 记录
+- `clean_md_path` 语义从 BS 结果覆盖为 LLM 结果（无 DB migration）
 
 ## AI SDLC 流程约定
 

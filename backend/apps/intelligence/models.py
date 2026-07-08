@@ -20,12 +20,26 @@ class MonitorProject(TimestampedModel):
     feishu_webhook = models.URLField(blank=True)
     refined_rules = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
+    next_run_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-updated_at"]
 
     def __str__(self) -> str:
         return self.project_name
+
+    def save(self, *args, **kwargs):
+        from apps.intelligence.services.cron_matcher import get_next_run
+
+        if not self.pk or self._state.adding:
+            # 新建项目
+            self.next_run_at = get_next_run(self.cron, timezone.now())
+        else:
+            # 更新：检查 cron 是否变更
+            old = MonitorProject.objects.filter(pk=self.pk).values_list("cron", flat=True).first()
+            if old != self.cron:
+                self.next_run_at = get_next_run(self.cron, timezone.now())
+        super().save(*args, **kwargs)
 
 
 class DataSnapshot(TimestampedModel):

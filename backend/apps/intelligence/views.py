@@ -1,7 +1,7 @@
 import os
 
 from django.db.models import QuerySet
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -140,3 +140,28 @@ class FeedDownloadMdView(APIView):
             as_attachment=True,
             filename=filename,
         )
+
+
+class FeedHtmlPreviewView(APIView):
+    """在线预览 HTML 报告（inline，不触发下载）。
+
+    飞书卡片"在线预览"按钮跳转到 /view/html/{id}，由本 view 读取
+    feed.html_report_path 文件内容并以 text/html 返回，浏览器直接渲染。
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk: int) -> HttpResponse:
+        try:
+            feed = IntelligenceFeed.objects.get(pk=pk)
+        except IntelligenceFeed.DoesNotExist:
+            raise Http404
+
+        html_path = feed.html_report_path
+        if not html_path or not os.path.exists(html_path):
+            raise Http404("HTML report file not found")
+
+        with open(html_path, "rb") as f:
+            content = f.read()
+
+        return HttpResponse(content, content_type="text/html; charset=utf-8")

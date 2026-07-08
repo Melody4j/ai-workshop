@@ -15,8 +15,16 @@ def save_raw_html(project_id: int, url: str, content: str, fetch_time: datetime)
 
 
 def save_clean_md(project_id: int, url: str, content: str, fetch_time: datetime) -> str:
-    """将清洗后的 Markdown 保存到文件，返回绝对路径。内容为空时返回空字符串。"""
+    """将 BS 清洗后的 Markdown 保存到文件，返回绝对路径。内容为空时返回空字符串。"""
     return _save_content(project_id, url, content, fetch_time, "md")
+
+
+def save_llm_clean_md(project_id: int, url: str, content: str, fetch_time: datetime) -> str:
+    """将 LLM 降噪后的 Markdown 保存到文件，返回绝对路径。内容为空时返回空字符串。
+
+    文件名加 llm_ 前缀以区分 BS 清洗版本，用于旧格式兼容检测。
+    """
+    return _save_content(project_id, url, content, fetch_time, "md", prefix="llm_")
 
 
 def _save_content(
@@ -25,6 +33,7 @@ def _save_content(
     content: str,
     fetch_time: datetime,
     ext: str,
+    prefix: str = "",
 ) -> str:
     if not content:
         return ""
@@ -37,13 +46,13 @@ def _save_content(
     dir_path = storage_dir / "snapshots" / str(project_id) / date_str
     dir_path.mkdir(parents=True, exist_ok=True)
 
-    filename = f"{time_str}_{slug}.{ext}"
+    filename = f"{prefix}{time_str}_{slug}.{ext}"
     file_path = dir_path / filename
 
     # 同秒冲突时追加序号
     counter = 1
     while file_path.exists():
-        filename = f"{time_str}_{slug}_{counter}.{ext}"
+        filename = f"{prefix}{time_str}_{slug}_{counter}.{ext}"
         file_path = dir_path / filename
         counter += 1
 

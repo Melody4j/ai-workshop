@@ -219,3 +219,66 @@ class FeedDownloadMdViewTest(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class FeedHtmlPreviewViewTest(APITestCase):
+    """HTML 报告在线预览 API 测试"""
+
+    def setUp(self) -> None:
+        self.project = MonitorProject.objects.create(
+            project_name="测试项目",
+            feishu_webhook="https://open.feishu.cn/open-apis/bot/v2/hook/xxx",
+        )
+        # 创建临时 HTML 报告文件
+        self.html_fd, self.html_path = tempfile.mkstemp(suffix=".html")
+        with os.fdopen(self.html_fd, "w") as f:
+            f.write("<html><body><h1>竞品情报报告</h1></body></html>")
+
+        self.feed = IntelligenceFeed.objects.create(
+            project=self.project,
+            job_status=IntelligenceFeed.JobStatus.CHANGED,
+            change_summary="变化摘要",
+            strategic_intent="战略意图",
+            html_report_path=self.html_path,
+        )
+
+    def tearDown(self) -> None:
+        if os.path.exists(self.html_path):
+            os.unlink(self.html_path)
+
+    def test_preview_html_returns_inline_html(self) -> None:
+        """GET /api/feeds/{id}/preview_html 返回 HTML 内容（inline，非下载）"""
+        response = self.client.get(
+            reverse("feed-preview-html", kwargs={"pk": self.feed.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("text/html", response["Content-Type"])
+        # inline 预览，不是 attachment 下载
+        self.assertNotIn("attachment", response.get("Content-Disposition", ""))
+        self.assertIn(b"<html>", response.content)
+
+    def test_preview_html_via_root_url(self) -> None:
+        """GET /view/html/{id} 根路由也能正常返回 HTML"""
+        response = self.client.get(f"/view/html/{self.feed.pk}")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("text/html", response["Content-Type"])
+        self.assertIn("竞品情报报告".encode("utf-8"), response.content)
+
+    def test_preview_html_not_found(self) -> None:
+        """html_report_path 为空时返回 404"""
+        self.feed.html_report_path = ""
+        self.feed.save(update_fields=["html_report_path"])
+
+        response = self.client.get(
+            reverse("feed-preview-html", kwargs={"pk": self.feed.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_preview_html_feed_not_found(self) -> None:
+        """不存在的 feed_id 返回 404"""
+        response = self.client.get("/view/html/99999")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

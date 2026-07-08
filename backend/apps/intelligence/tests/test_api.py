@@ -1,3 +1,7 @@
+import os
+import tempfile
+from unittest.mock import MagicMock, patch
+
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -124,3 +128,94 @@ class ReportApiTests(APITestCase):
         self.changed_feed.refresh_from_db()
         self.assertIsNone(self.changed_feed.user_feedback)
         self.assertEqual(self.changed_feed.user_comment, "")
+
+
+class FeedPushViewTest(APITestCase):
+    """飞书推送触发 API 测试"""
+
+    def setUp(self) -> None:
+        self.project = MonitorProject.objects.create(
+            project_name="测试项目",
+            feishu_webhook="https://open.feishu.cn/open-apis/bot/v2/hook/xxx",
+        )
+        self.changed_feed = IntelligenceFeed.objects.create(
+            project=self.project,
+            job_status=IntelligenceFeed.JobStatus.CHANGED,
+            change_summary="变化摘要",
+            strategic_intent="战略意图",
+        )
+        self.no_change_feed = IntelligenceFeed.objects.create(
+            project=self.project,
+            job_status=IntelligenceFeed.JobStatus.NO_CHANGE,
+        )
+
+    @patch("apps.intelligence.services.feishu_service.httpx.post")
+    @patch("apps.intelligence.services.feishu_service.time.sleep")
+    def test_push_changed_feed_returns_pushed(self, mock_sleep, mock_post) -> None:
+        """CHANGED feed 推送成功返回 200 + push_status=PUSHED"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"StatusCode": 0}
+        mock_post.return_value = mock_response
+
+        response = self.client.post(
+            reverse("feed-push", kwargs={"pk": self.changed_feed.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["push_status"], "PUSHED")
+
+    def test_push_non_changed_feed_returns_400(self) -> None:
+        """非 CHANGED feed 推送返回 400"""
+        response = self.client.post(
+            reverse("feed-push", kwargs={"pk": self.no_change_feed.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class FeedDownloadMdViewTest(APITestCase):
+    """MD 报告下载 API 测试"""
+
+    def setUp(self) -> None:
+        self.project = MonitorProject.objects.create(
+            project_name="测试项目",
+            feishu_webhook="https://open.feishu.cn/open-apis/bot/v2/hook/xxx",
+        )
+        # 创建临时 MD 文件
+        self.md_fd, self.md_path = tempfile.mkstemp(suffix=".md")
+        with os.fdopen(self.md_fd, "w") as f:
+            f.write("# 竞品情报报告\n\n这是测试内容。")
+
+        self.feed = IntelligenceFeed.objects.create(
+            project=self.project,
+            job_status=IntelligenceFeed.JobStatus.CHANGED,
+            change_summary="变化摘要",
+            strategic_intent="战略意图",
+            md_table_path=self.md_path,
+        )
+
+    def tearDown(self) -> None:
+        if os.path.exists(self.md_path):
+            os.unlink(self.md_path)
+
+    def test_download_md_returns_file(self) -> None:
+        """GET /api/feeds/{id}/download_md 返回 MD 文件下载流"""
+        response = self.client.get(
+            reverse("feed-download-md", kwargs={"pk": self.feed.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("text/markdown", response["Content-Type"])
+        self.assertIn("attachment", response["Content-Disposition"])
+
+    def test_download_md_not_found(self) -> None:
+        """md_table_path 为空时返回 404"""
+        self.feed.md_table_path = ""
+        self.feed.save(update_fields=["md_table_path"])
+
+        response = self.client.get(
+            reverse("feed-download-md", kwargs={"pk": self.feed.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

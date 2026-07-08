@@ -16,6 +16,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "apps.intelligence",
+    "django_apscheduler",
 ]
 
 MIDDLEWARE = [
@@ -83,3 +84,6 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.MultiPartParser",
     ],
 }
+
+# django-apscheduler 配置
+APSCHEDULER_RUN_NOW_TIMEOUT = 25  # seconds

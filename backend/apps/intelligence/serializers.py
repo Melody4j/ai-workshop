@@ -43,6 +43,8 @@ class MonitorProjectSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Each competitor must be an object.")
             if not item.get("title") or not item.get("url"):
                 raise serializers.ValidationError("Each competitor must include title and url.")
+            if "crawl_hint" in item and not isinstance(item.get("crawl_hint", ""), str):
+                raise serializers.ValidationError("crawl_hint must be a string when provided.")
 
         return value
 

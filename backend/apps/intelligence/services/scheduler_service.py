@@ -1,7 +1,7 @@
 """调度服务：全局扫描 → 采集 → LLM 降噪 → diff 熔断 → 情报生成 → 入库+报告+飞书推送。
 
 核心链路（每 URL）：
-1. 采集（httpx + BS 去噪）
+1. 采集（Firecrawl v2 crawl API）
 2. LLM 语义降噪（第 1 次 LLM 调用）
 3. 保存 LLM 降噪 MD，创建 DataSnapshot（clean_md_path 指向 LLM 版本）
 4. 获取上一条快照 → 首次爬取/旧格式 → 跳过 diff；否则文本 diff
@@ -52,9 +52,10 @@ def run_scan():
                 logger.warning(f"[采集] 项目 {project.project_name} 第 {idx} 个 URL 为空, 跳过")
                 continue
             title = (item or {}).get("title", "")
+            crawl_hint = (item or {}).get("crawl_hint", "")
             logger.info(f"[采集] ({idx}/{len(urls)}) {title} - {url}")
             try:
-                _process_url(project, url, title, now)
+                _process_url(project, url, title, now, crawl_hint)
             except Exception as e:
                 logger.error(f"[处理异常] {url} - {e}", exc_info=True)
                 IntelligenceFeed.objects.create(
@@ -75,14 +76,14 @@ def run_scan():
     logger.info(f"[扫描结束] 本次扫描完成")
 
 
-def _process_url(project, url, title, now):
+def _process_url(project, url, title, now, crawl_hint=""):
     """处理单个 URL 的完整链路：采集 → LLM降噪 → diff熔断 → 情报生成 → 入库+报告。
 
     异常由调用方捕获，单 URL 异常不中断其他 URL。
     """
     # === Step 1: 采集 ===
     try:
-        raw_md, clean_md = crawler_service.fetch_and_clean(url)
+        raw_md, clean_md = crawler_service.fetch_and_clean(url, crawl_hint)
         logger.info(f"[采集完成] {url} raw={len(raw_md)} chars, clean={len(clean_md)} chars")
     except Exception as e:
         logger.error(f"[采集异常] {url} - {e}", exc_info=True)

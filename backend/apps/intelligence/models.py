@@ -50,8 +50,8 @@ class DataSnapshot(TimestampedModel):
     )
     source_title = models.CharField(max_length=200)
     source_url = models.URLField()
-    raw_markdown = models.TextField(blank=True)
-    clean_markdown = models.TextField(blank=True)
+    raw_html_path = models.CharField(max_length=512, blank=True)
+    clean_md_path = models.CharField(max_length=512, blank=True)
     fetch_time = models.DateTimeField(default=timezone.now)
 
     class Meta:

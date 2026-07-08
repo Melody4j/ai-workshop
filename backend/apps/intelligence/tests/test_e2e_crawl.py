@@ -34,9 +34,9 @@ class E2ECrawlTest(TestCase):
         # 7 条 DataSnapshot
         self.assertEqual(DataSnapshot.objects.filter(project=project).count(), 7)
 
-        # >= 5 条 clean_markdown 非空
+        # >= 5 条 clean_md_path 非空
         success_count = DataSnapshot.objects.filter(
-            project=project, clean_markdown__gt=""
+            project=project, clean_md_path__gt=""
         ).count()
         self.assertGreaterEqual(success_count, 5)
 

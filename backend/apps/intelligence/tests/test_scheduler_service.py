@@ -74,8 +74,8 @@ class SchedulerServiceTest(TestCase):
         snapshots = DataSnapshot.objects.filter(project=project)
         self.assertEqual(snapshots.count(), 2)
         for snap in snapshots:
-            self.assertEqual(snap.raw_markdown, "")
-            self.assertEqual(snap.clean_markdown, "")
+            self.assertEqual(snap.raw_html_path, "")
+            self.assertEqual(snap.clean_md_path, "")
 
     @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
     def test_run_scan_does_not_write_intelligence_feed(self, mock_fetch):
@@ -101,7 +101,7 @@ class SchedulerServiceTest(TestCase):
         )
         scheduler_service.run_scan()
         self.assertEqual(DataSnapshot.objects.filter(project=project).count(), 3)
-        empty_snap = DataSnapshot.objects.filter(project=project, raw_markdown="")
+        empty_snap = DataSnapshot.objects.filter(project=project, raw_html_path="")
         self.assertEqual(empty_snap.count(), 1)
 
     @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")

@@ -4,6 +4,7 @@ from django.utils import timezone
 
 from apps.intelligence.models import MonitorProject, DataSnapshot
 from apps.intelligence.services import crawler_service
+from apps.intelligence.services import file_storage
 from apps.intelligence.services.cron_matcher import get_next_run
 
 logger = logging.getLogger(__name__)
@@ -42,12 +43,16 @@ def run_scan():
             except Exception as e:
                 logger.error(f"[采集异常] {url} - {e}", exc_info=True)
                 raw_md, clean_md = "", ""
+
+            raw_html_path = file_storage.save_raw_html(project.id, url, raw_md, now)
+            clean_md_path = file_storage.save_clean_md(project.id, url, clean_md, now)
+
             DataSnapshot.objects.create(
                 project=project,
                 source_url=url,
                 source_title=title,
-                raw_markdown=raw_md,
-                clean_markdown=clean_md,
+                raw_html_path=raw_html_path,
+                clean_md_path=clean_md_path,
                 fetch_time=now,
             )
             logger.info(f"[入库] 快照已保存: {url}")

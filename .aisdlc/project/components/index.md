@@ -5,6 +5,7 @@
 | frontend-console | P0 | FS | [frontend/src/](../../../frontend/src/) | - | - | [ops](../ops/index.md) | - [ ] |
 | intelligence-api | P0 | FS | [backend/apps/intelligence/views.py](../../../backend/apps/intelligence/views.py) | [api](./intelligence-api.md#api-contract) | - | [ops](../ops/index.md) | - [x] |
 | intelligence-models | P0 | FS | [backend/apps/intelligence/models.py](../../../backend/apps/intelligence/models.py) | - | [data](./intelligence-models.md#data-contract) | [ops](../ops/index.md) | - [x] |
+| intelligence-scheduler | P0 | FS | [backend/apps/intelligence/scheduler.py](../../../backend/apps/intelligence/scheduler.py) | - | [service](./intelligence-scheduler.md#service-contract) | [ops](../ops/index.md) | - [x] |
 
 ## Dependencies（direct only）
 
@@ -12,4 +13,5 @@
 graph LR
   frontend_console["frontend-console"] -->|HTTP API| intelligence_api["intelligence-api"]
   intelligence_api -->|ORM| intelligence_models["intelligence-models"]
+  intelligence_scheduler["intelligence-scheduler"] -->|ORM| intelligence_models["intelligence-models"]
 ```

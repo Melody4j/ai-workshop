@@ -2,6 +2,8 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
+# 采集文件存储根目录（HTML/MD 文件落盘位置）
+SNAPSHOT_STORAGE_DIR = BASE_DIR.parent / "data"
 
 SECRET_KEY = "dev-only-secret-key"
 DEBUG = True

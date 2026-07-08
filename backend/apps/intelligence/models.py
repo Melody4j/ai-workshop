@@ -67,6 +67,11 @@ class IntelligenceFeed(TimestampedModel):
         NO_CHANGE = "NO_CHANGE", "No Change"
         ERROR_CRAWL = "ERROR_CRAWL", "Error Crawl"
 
+    class PushStatus(models.TextChoices):
+        NOT_PUSHED = "NOT_PUSHED", "Not Pushed"
+        PUSHED = "PUSHED", "Pushed"
+        PUSH_FAILED = "PUSH_FAILED", "Push Failed"
+
     project = models.ForeignKey(
         MonitorProject,
         on_delete=models.CASCADE,
@@ -76,6 +81,11 @@ class IntelligenceFeed(TimestampedModel):
         max_length=20,
         choices=JobStatus.choices,
         default=JobStatus.CHANGED,
+    )
+    push_status = models.CharField(
+        max_length=20,
+        choices=PushStatus.choices,
+        default=PushStatus.NOT_PUSHED,
     )
     change_summary = models.TextField(blank=True)
     strategic_intent = models.TextField(blank=True)

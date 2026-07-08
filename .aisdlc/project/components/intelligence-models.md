@@ -8,6 +8,7 @@
   - [0002_monitorproject_competitor_contexts_and_more.py](../../../backend/apps/intelligence/migrations/0002_monitorproject_competitor_contexts_and_more.py)
   - [0003_monitorproject_next_run_at.py](../../../backend/apps/intelligence/migrations/0003_monitorproject_next_run_at.py)
   - [0004_remove_datasnapshot_clean_markdown_and_more.py](../../../backend/apps/intelligence/migrations/0004_remove_datasnapshot_clean_markdown_and_more.py)
+  - [0005_intelligencefeed_push_status.py](../../../backend/apps/intelligence/migrations/0005_intelligencefeed_push_status.py)
 
 ## Data Contract
 
@@ -27,6 +28,9 @@
 8. 当前任务停用不清理历史报告记录
 9. `DataSnapshot` 数据库字段只存绝对文件路径（`raw_html_path` / `clean_md_path`），不存内容；内容为空时路径为空字符串
 10. `DataSnapshot` append-only——禁止 UPDATE/DELETE（DB 触发器尚未实现，见 Evidence Gaps）
+11. `IntelligenceFeed.push_status` 保持兼容 `NOT_PUSHED` / `PUSHED` / `PUSH_FAILED`，默认 `NOT_PUSHED`（来源：Spec 005）
+12. `push_status` 与 `job_status` 正交——`job_status` 标识情报结果，`push_status` 标识推送结果，不互相覆盖（来源：Spec 005）
+13. 仅 `job_status=CHANGED` 的记录触发推送（来源：Spec 005）
 
 ### Evidence
 
@@ -38,6 +42,7 @@
 - [backend/apps/intelligence/tests/test_models.py](../../../backend/apps/intelligence/tests/test_models.py)
 - [backend/apps/intelligence/tests/test_cron_matcher.py](../../../backend/apps/intelligence/tests/test_cron_matcher.py)
 - [backend/apps/intelligence/tests/test_scheduler_service.py](../../../backend/apps/intelligence/tests/test_scheduler_service.py)
+- [backend/apps/intelligence/tests/test_feishu_service.py](../../../backend/apps/intelligence/tests/test_feishu_service.py)
 
 ## Evidence Gaps
 

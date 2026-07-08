@@ -20,13 +20,18 @@
 3. 报告接口提供列表、详情、评分 CRUD
 4. 报告列表入口支持 `project` / `status` / `date_from` / `date_to` 过滤
 5. 评分写入仅接受 `user_feedback=-1|1`
+6. `POST /api/feeds/{id}/push`：手动触发飞书推送，非 `CHANGED` feed 返回 400（来源：Spec 005）
+7. `GET /api/feeds/{id}/download_md`：返回 MD 文件下载流（`Content-Type: text/markdown`），文件不存在返回 404（来源：Spec 005）
+8. 推送服务入口为 `feishu_service.push_intelligence(feed_id)`，返回 `"pushed"` / `"push_failed"` / `"skipped"` / `"skipped_no_webhook"` / `"not_found"`（来源：Spec 005）
 
 ### Evidence
 
 - [backend/apps/intelligence/urls.py](../../../backend/apps/intelligence/urls.py)
 - [backend/apps/intelligence/views.py](../../../backend/apps/intelligence/views.py)
 - [backend/apps/intelligence/serializers.py](../../../backend/apps/intelligence/serializers.py)
+- [backend/apps/intelligence/services/feishu_service.py](../../../backend/apps/intelligence/services/feishu_service.py)
 - [backend/apps/intelligence/tests/test_api.py](../../../backend/apps/intelligence/tests/test_api.py)
+- [backend/apps/intelligence/tests/test_feishu_service.py](../../../backend/apps/intelligence/tests/test_feishu_service.py)
 
 ## Evidence Gaps
 

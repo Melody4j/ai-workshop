@@ -10,6 +10,8 @@ load_dotenv(BASE_DIR / ".env")
 DATA_DIR = BASE_DIR / "data"
 # 采集文件存储根目录（HTML/MD 文件落盘位置）
 SNAPSHOT_STORAGE_DIR = BASE_DIR.parent / "data"
+# 飞书卡片中跳转链接的站点基础 URL（开发环境默认 localhost:5173）
+SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "http://localhost:5173")
 
 SECRET_KEY = "dev-only-secret-key"
 DEBUG = True

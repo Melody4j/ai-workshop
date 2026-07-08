@@ -49,6 +49,53 @@ class ProjectApiTests(APITestCase):
             "lovable-notes.md",
         )
 
+    def test_create_project_with_crawl_hint(self) -> None:
+        """competitor_urls 含 crawl_hint 字段时创建成功。"""
+        payload = {
+            "project_name": "Crawl Hint Test",
+            "competitor_urls": [
+                {
+                    "title": "Lovable",
+                    "url": "https://lovable.dev",
+                    "crawl_hint": "爬取定价页和功能列表",
+                },
+            ],
+            "self_product_doc": "",
+            "self_product_doc_name": "",
+            "competitor_contexts": [],
+            "cron": "0 9 * * *",
+            "feishu_webhook": "",
+            "is_active": True,
+        }
+
+        response = self.client.post(reverse("project-list"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        project = MonitorProject.objects.get()
+        self.assertEqual(
+            project.competitor_urls[0]["crawl_hint"], "爬取定价页和功能列表"
+        )
+
+    def test_create_project_without_crawl_hint(self) -> None:
+        """competitor_urls 不含 crawl_hint 字段时创建成功（兼容旧数据）。"""
+        payload = {
+            "project_name": "No Crawl Hint",
+            "competitor_urls": [
+                {"title": "v0", "url": "https://v0.dev"},
+            ],
+            "self_product_doc": "",
+            "self_product_doc_name": "",
+            "competitor_contexts": [],
+            "cron": "0 9 * * *",
+            "feishu_webhook": "",
+            "is_active": True,
+        }
+
+        response = self.client.post(reverse("project-list"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(MonitorProject.objects.count(), 1)
+
     def test_delete_project_marks_it_inactive(self) -> None:
         project = MonitorProject.objects.create(
             project_name="Prompt IDE Monitor",

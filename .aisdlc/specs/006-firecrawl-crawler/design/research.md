@@ -190,13 +190,17 @@ status: draft
 
 ## 风险与验证清单（未关闭项）
 
-- **V-005-REST**：REST API crawl prompt 支持性实测（**阻塞实现**）
+- **V-005-REST**：REST API crawl prompt 支持性实测（**已通过 — v2 API**）
   - 风险/假设：REST API 文档称 crawl 支持 prompt，但 SDK 不支持；若 REST API 也不支持，推荐方案需调整
-  - 方法：用真实 Firecrawl API key，curl POST /v1/crawl 带 prompt 参数，验证是否被接受 + 是否影响爬取范围
-  - 成功/失败信号：REST API 接受 prompt 且爬取结果聚焦于 prompt 描述的内容 → 成立；不接受或无效果 → 不成立
-  - Owner：DEV
-  - 截止：I2 实现前
-  - 触发动作：成立则用 requests 直调 REST API 传 prompt；不成立则降级为 include_paths 路径过滤（T6 降级路径）
+  - 方法：用真实 Firecrawl API key，curl POST /v1/crawl + /v2/crawl 带 prompt 参数
+  - 实测结果（2026-07-09）：
+    - `/v1/crawl` **拒绝** prompt：`{"success":false,"code":"BAD_REQUEST","details":[{"keys":["prompt"],"message":"Unrecognized key: \"prompt\""}]}`
+    - `/v2/crawl` **接受** prompt：返回 `{"success":true,"id":"...","promptGeneratedOptions":{"includePaths":["projects/.*","products/.*"],"maxDepth":3,...},"finalCrawlerOptions":{...}}`
+    - prompt 机制：AI 根据 prompt 生成 `promptGeneratedOptions`（含 includePaths/maxDepth 等），非直接引导内容提取
+    - v2 文档结构：`{markdown, html, metadata:{sourceURL, url, title, ...}}` — 无顶层 url
+    - 免费档限流：3 req/min
+    - 额度：1 credit/页
+  - 触发动作：采用 `/v2/crawl`（D-001/D-002 已更新）；需处理 0 页回退（V-011）
 
 - **V-001-TIMEOUT**：crawl 轮询超时实测
   - 风险/假设：limit=10 的站点 120s 内可能无法完成
@@ -225,3 +229,4 @@ status: draft
 ## 迭代记录
 
 - 2026-07-08：初始版本。安装 firecrawl-py 4.31.0 实测 SDK API 结构，WebSearch 查阅 REST API 文档。核心发现：SDK crawl_url 不支持 prompt（_validate_kwargs 白名单不含），与用户需求 3 冲突。推荐用 requests 直调 REST API 传 prompt，降级方案 include_paths。识别 V-005-REST 为阻塞性验证项（需真实 API key 实测）。
+- 2026-07-09：V-005-REST 实测验证。用真实 API key 测试发现 v1 拒绝 prompt 但 v2 接受。v2 prompt 机制为 AI 生成爬取选项（includePaths 等），非直接内容引导。v2 文档无顶层 url（在 metadata.sourceURL）。免费档 3 req/min 限流。1 credit/页。V-005-REST 关闭，design.md 已同步更新。

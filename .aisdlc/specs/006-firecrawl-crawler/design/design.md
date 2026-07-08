@@ -10,7 +10,7 @@ status: draft
 - 需求标识（分支）：`006-firecrawl-crawler`
 - 作者：AI + 用户
 - 状态：draft
-- 最后更新：2026-07-08
+- 最后更新：2026-07-09
 - 关联文档：`requirements/solution.md`、`design/research.md`、`requirements/raw.md`
 
 ## 1. In/Out（追溯 solution.md）
@@ -51,7 +51,7 @@ status: draft
 |---|---|---|
 | Vue SPA（frontend/） | 修改 | ProjectForm.vue 新增 crawl_hint 输入框，提交时传入 competitor_urls |
 | Django Backend（backend/） | 修改 | crawler_service 重写 + scheduler_service 调用修改 + serializer 放宽 + settings 配置 |
-| Firecrawl Cloud API（外部） | 新增对接 | POST /v1/crawl（启动爬取+prompt）→ GET /v1/crawl/{id}（轮询状态+数据） |
+| Firecrawl Cloud API（外部） | 新增对接 | POST /v2/crawl（启动爬取+prompt）→ GET /v2/crawl/{id}（轮询状态+数据） |
 | SQLite | 不变 | DataSnapshot 表结构不变（raw_html_path + clean_md_path） |
 | 文件系统（data/） | 不变 | file_storage.py 落盘逻辑保留 |
 
@@ -61,37 +61,41 @@ status: draft
 crawler_service.py
 ├── fetch_with_firecrawl(url, crawl_hint, limit=10) → (raw_html, clean_md) | ("", "")
 │   ├── _start_crawl(url, crawl_hint, limit) → job_id
-│   │   └── POST /v1/crawl {url, prompt: crawl_hint, limit, scrapeOptions:{formats:[markdown,html]}}
-│   ├── _poll_crawl(job_id, poll_interval=5, timeout=120) → V1CrawlStatusResponse
-│   │   └── GET /v1/crawl/{id} 循环直到 status=completed/failed 或超时
+│   │   └── POST /v2/crawl {url, prompt: crawl_hint, limit, scrapeOptions:{formats:[markdown,html]}}
+│   ├── _poll_crawl(job_id, poll_interval=5, timeout=120) → response dict
+│   │   └── GET /v2/crawl/{id} 循环直到 status=completed/failed 或超时
 │   └── _merge_documents(documents) → (raw_html, clean_md)
-│       └── 按 document.url 字典序排序 → 拼接 markdown（含 source 标记）+ 拼接 html
+│       └── 按 metadata.sourceURL 字典序排序 → 拼接 markdown（含 source 标记）+ 拼接 html
 ```
 
 ## 3. 关键决策
 
-### D-001：用 requests 直调 Firecrawl REST API，不用 SDK crawl_url
+### D-001：用 requests 直调 Firecrawl v2 REST API，不用 SDK crawl_url
 
-- **决策**：crawler_service 用 `requests` 库直接调 Firecrawl REST API（POST /v1/crawl + GET /v1/crawl/{id}），不使用 firecrawl-py SDK 的 `crawl_url` 方法。
-- **原因**：D1 调研（research.md T1）确认 SDK `crawl_url` 的 `_validate_kwargs` 白名单**不含 prompt**，无法传 crawl_hint。REST API 文档称支持 prompt 参数。
+- **决策**：crawler_service 用 `requests` 库直接调 Firecrawl **v2** REST API（POST /v2/crawl + GET /v2/crawl/{id}），不使用 firecrawl-py SDK 的 `crawl_url` 方法。
+- **原因**：D1 调研（research.md T1）确认 SDK `crawl_url` 的 `_validate_kwargs` 白名单**不含 prompt**。V-005-REST 实测确认 `/v1/crawl` 同样拒绝 prompt（`Unrecognized key: "prompt"`），但 `/v2/crawl` **接受 prompt** 并返回 job_id。
 - **备选**：SDK crawl_url（不传 prompt）— 不选，因不满足 raw.md 需求 3。
 
-### D-002：crawl_hint 作为 prompt 传入 POST /v1/crawl body
+### D-002：crawl_hint 作为 prompt 传入 POST /v2/crawl body
 
-- **决策**：crawl_hint 非空时，作为 `prompt` 字段传入 POST /v1/crawl 请求体，引导 Firecrawl AI 爬虫聚焦内容。crawl_hint 为空时不传 prompt。
-- **原因**：满足 raw.md 需求 3"crawl_hint 作为 Firecrawl prompt 传入"。D1 调研确认 REST API 文档支持 prompt（V-005-REST 需实测确认）。
-- **降级**：若 V-005-REST 实测发现 REST API 不支持 prompt，降级为 include_paths 路径过滤或 crawl_hint 仅作日志。
+- **决策**：crawl_hint 非空时，作为 `prompt` 字段传入 POST /v2/crawl 请求体。crawl_hint 为空时不传 prompt。
+- **原因**：满足 raw.md 需求 3"crawl_hint 作为 Firecrawl prompt 传入"。V-005-REST 实测确认 `/v2/crawl` 接受 prompt。
+- **prompt 机制（V-005-REST 实测发现）**：v2 API 的 prompt **不直接引导内容提取**，而是由 Firecrawl AI 根据 prompt 生成爬取选项 `promptGeneratedOptions`（含 `includePaths`、`maxDepth`、`crawlEntireDomain` 等），再合并为 `finalCrawlerOptions` 执行爬取。
+- **风险**：AI 生成的 `includePaths` 可能与目标站点实际路径不匹配，导致 0 页结果（实测 lovable.dev + prompt="Extract product description and pricing" → includePaths=["projects/.*","products/.*"] → 0 页匹配）。实现时需检测 0 页结果并回退为无 prompt 重新 crawl。
+- **降级**：已不需要降级（v2 支持 prompt），但需处理 0 页结果的回退逻辑。
 
-### D-003：手动轮询，间隔 5s，总超时 120s
+### D-003：手动轮询，间隔 5s，总超时 120s，429 重试
 
-- **决策**：POST /v1/crawl 返回 job_id 后，每 5 秒 GET /v1/crawl/{id} 查询状态，总超时 120s。超时后返回 ("","") 失败。
-- **原因**：D1 调研（research.md T4）确认 SDK crawl_url 无显式超时保护。手动轮询可控制总超时，避免无限等待。
+- **决策**：POST /v2/crawl 返回 job_id 后，每 5 秒 GET /v2/crawl/{id} 查询状态，总超时 120s。超时后返回 ("","") 失败。遇到 429 限流时按 `Retry-After` header 等待后重试。
+- **原因**：D1 调研（research.md T4）确认 SDK crawl_url 无显式超时保护。手动轮询可控制总超时，避免无限等待。V-005-REST 实测确认免费档限流 3 req/min，需处理 429。
+- **限流注意**：免费档 3 req/min，5s 轮询间隔（12 req/min）会触发限流。实现时需：(1) 捕获 429 并按 Retry-After 等待；(2) 付费档可提高轮询频率。
 - **备选**：SDK crawl_url（poll_interval=2s）— 不选，因无超时保护且不支持 prompt。
 
-### D-004：多页结果按 url 字典序拼接为单快照
+### D-004：多页结果按 metadata.sourceURL 字典序拼接为单快照
 
-- **决策**：crawl 返回的 `List[document]` 按 `document.url` 字典序排序，markdown 用 `\n\n---\nsource: {url}\n\n` 分隔拼接，html 用 `\n<!-- {url} -->\n` 分隔拼接。
-- **原因**：R1-Q2 决策合并单快照；字典序确保拼接确定性（V-002）；分隔标记含 url 确保可追溯（V-003）。
+- **决策**：crawl 返回的 `List[document]` 按 `document.metadata.sourceURL` 字典序排序，markdown 用 `\n\n---\nsource: {url}\n\n` 分隔拼接，html 用 `\n<!-- {url} -->\n` 分隔拼接。
+- **原因**：R1-Q2 决策合并单快照；字典序确保拼接确定性（V-002）；分隔标记含 url 确保可追溯（V-003）。V-005-REST 实测确认 v2 文档无顶层 `url` 字段，URL 在 `metadata.sourceURL`。
+- **v2 文档结构**：`{markdown: str, html: str, metadata: {sourceURL, url, title, description, ...}, warning?: str}`
 
 ### D-005：清理历史快照管理命令
 
@@ -159,11 +163,12 @@ crawler_service.py
 
 | ID | 风险/假设 | 方法 | 成功信号 | Owner | 截止 | 触发动作 |
 |---|---|---|---|---|---|---|
-| V-005-REST | REST API crawl prompt 支持性（**阻塞**） | 用真实 API key curl POST /v1/crawl 带 prompt | API 接受 prompt 且爬取聚焦 | DEV | I2 前 | 不成立→降级 include_paths |
+| ~~V-005-REST~~ | ~~REST API crawl prompt 支持性（**阻塞**）~~ | ~~curl POST /v1/crawl 带 prompt~~ | **已通过（v2）** | DEV | I2 前 | v1 拒绝 prompt → 改用 /v2/crawl（D-001 已更新） |
+| V-011 | AI 生成 includePaths 导致 0 页结果 | 实测多竞品 URL + crawl_hint | 0 页时回退无 prompt 重 crawl 成功 | DEV | I2 中 | 0 页→自动回退无 prompt crawl |
 | V-001-T | crawl 轮询 120s 超时是否够 | 2-3 个竞品 URL 实测 crawl 耗时 | 全部 120s 内完成 | DEV | I2 中 | 不成立→增大至 300s |
 | V-002 | 拼接确定性（同 URL 两次 crawl 拼接一致） | 同 URL 连续 crawl 两次对比 clean_md | 两次一致 | DEV | I2 中 | 不成立→固定字典序 |
 | V-003-M | 分隔标记对 004 LLM 链路的影响 | 含标记的 clean_md 走 LLM 链路 | LLM 输出正常 | DEV | I2 后 | 不成立→调标记格式 |
-| V-009 | Firecrawl 额度消耗（limit×竞品×日级） | 查定价 + 估算日消耗 | 在可接受范围 | DEV/用户 | I2 前 | 不成立→减 limit/降频 |
+| V-009 | Firecrawl 额度消耗（1 credit/页 × limit × 竞品 × 日级） | 实测确认 1 credit/页；估算日消耗 | 5 竞品×limit=10 = 50 credits/日 | DEV/用户 | I2 前 | 不成立→减 limit/降频 |
 | V-010 | clear_snapshots 与 append-only 触发器冲突 | 确认触发器未实现；未来实现时清理命令需特殊处理 | 当前可 DELETE | DEV | I2 中 | 触发器实现后→用 raw SQL 绕过 |
 
 ## 7. Context Gaps
@@ -177,3 +182,4 @@ crawler_service.py
 ## 8. 迭代记录
 
 - 2026-07-08：初始版本。基于 solution.md + research.md + 3 组件页全文 + ADR-001 全文产出。核心决策：requests 直调 REST API 传 prompt（D-001/D-002），手动轮询 120s 超时（D-003），合并单快照按 url 排序（D-004），清理历史快照命令（D-005）。识别 2 个 CONTEXT GAP（intelligence-crawler / frontend-console 无组件页）。V-005-REST 为阻塞性验证项。
+- 2026-07-09：V-005-REST 实测验证。**关键发现**：(1) `/v1/crawl` 拒绝 prompt（`Unrecognized key`），`/v2/crawl` 接受 prompt — D-001/D-002 全部更新为 v2；(2) prompt 机制为 AI 生成 `promptGeneratedOptions`（includePaths 等），非直接内容引导 — D-002 修订 + 新增 V-011（0 页回退风险）；(3) v2 文档无顶层 url，URL 在 `metadata.sourceURL` — D-004 修订；(4) 免费档 3 req/min 限流 — D-003 加 429 处理；(5) 1 credit/页确认 — V-009 量化。阻塞项 V-005-REST 关闭。

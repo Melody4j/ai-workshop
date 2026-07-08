@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     FeedDownloadMdView,
     FeedHtmlPreviewView,
+    FeedOptimizePromptView,
     FeedPushView,
     ProjectDetailView,
     ProjectListCreateView,
@@ -20,4 +21,5 @@ urlpatterns = [
     path("feeds/<int:pk>/push", FeedPushView.as_view(), name="feed-push"),
     path("feeds/<int:pk>/download_md", FeedDownloadMdView.as_view(), name="feed-download-md"),
     path("feeds/<int:pk>/preview_html", FeedHtmlPreviewView.as_view(), name="feed-preview-html"),
+    path("feeds/<int:pk>/optimize_prompt", FeedOptimizePromptView.as_view(), name="feed-optimize-prompt"),
 ]

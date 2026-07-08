@@ -104,6 +104,9 @@ class LLMPipelineE2ETest(TestCase):
         self.mock_denoise.assert_called_once()
         self.mock_generate.assert_called_once()
 
+        # AC-001 (Spec 006): diff_text 非空（首次爬取 = llm_clean_md 全量）
+        self.assertTrue(feed.diff_text)
+
     @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
     def test_S002_text_diff_empty_circuit_breaker(self, mock_fetch):
         """S-002：无变化熔断 → NO_CHANGE + 零 LLM diff 调用 + 4 字段空。
@@ -142,6 +145,9 @@ class LLMPipelineE2ETest(TestCase):
 
         # generate_intel 也未调用
         self.mock_generate.assert_not_called()
+
+        # AC-001 (Spec 006): NO_CHANGE 的 diff_text 为空字符串
+        self.assertEqual(feed.diff_text, "")
 
     @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
     def test_S002b_judge_no_meaningful_change(self, mock_fetch):

@@ -37,6 +37,19 @@ class IntelResult(BaseModel):
     )
 
 
+class OptimizedPrompts(BaseModel):
+    """LLM prompt 优化结果 schema（2 字段，instructor 约束）。"""
+
+    intel_system: str = Field(
+        ...,
+        description="优化后的情报生成 system prompt 全文",
+    )
+    intel_user: str = Field(
+        ...,
+        description="优化后的情报生成 user prompt 全文",
+    )
+
+
 def get_openai_client() -> OpenAI:
     """返回 OpenAI 兼容 client 实例（用于普通文本补全）。
 

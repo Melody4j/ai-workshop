@@ -39,3 +39,15 @@ def load_prompt(name: str, **kwargs) -> str:
 
     logger.debug(f"[Prompt] 已加载模板 {name}，变量: {list(kwargs.keys())}")
     return rendered
+
+
+def save_prompt(name: str, content: str) -> None:
+    """将内容写回 Prompt 模板文件（UTF-8 编码）。
+
+    Args:
+        name: 模板名称（不含扩展名），如 "intel_system" → prompts/intel_system.md
+        content: 要写入的完整 prompt 内容
+    """
+    file_path = PROMPTS_DIR / f"{name}.md"
+    file_path.write_text(content, encoding="utf-8")
+    logger.info(f"[Prompt] 已保存模板 {name}，{len(content)} 字符")

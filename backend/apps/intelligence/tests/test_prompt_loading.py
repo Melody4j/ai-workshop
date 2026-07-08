@@ -1,6 +1,6 @@
 """测试 Prompt 模板加载与变量注入。"""
 from django.test import SimpleTestCase
-from apps.intelligence.services.prompt_loader import load_prompt
+from apps.intelligence.services.prompt_loader import load_prompt, save_prompt
 
 
 class PromptLoadingTest(SimpleTestCase):
@@ -46,3 +46,40 @@ class PromptLoadingTest(SimpleTestCase):
         """加载不存在的 prompt 文件应抛出异常。"""
         with self.assertRaises(FileNotFoundError):
             load_prompt("nonexistent_prompt")
+
+
+class PromptSaveTest(SimpleTestCase):
+    """测试 save_prompt 写回文件能力。"""
+
+    def test_save_prompt_writes_file(self):
+        """save_prompt 将内容写入 prompts/{name}.md 文件。"""
+        test_name = "_test_save_prompt_tmp"
+        test_content = "# 测试 prompt 内容\n\n这是测试。"
+        try:
+            save_prompt(test_name, test_content)
+            loaded = load_prompt(test_name)
+            self.assertEqual(loaded, test_content)
+        finally:
+            from pathlib import Path
+            from apps.intelligence.services.prompt_loader import PROMPTS_DIR
+            tmp_file = PROMPTS_DIR / f"{test_name}.md"
+            if tmp_file.exists():
+                tmp_file.unlink()
+
+    def test_save_prompt_roundtrip(self):
+        """save_prompt 写入后 load_prompt 能正确读取（含占位符）。"""
+        test_name = "_test_roundtrip_tmp"
+        test_content = "# 测试\n{self_product_doc}\n{diff_text}"
+        try:
+            save_prompt(test_name, test_content)
+            result = load_prompt(test_name, self_product_doc="产品文档", diff_text="diff内容")
+            self.assertIn("产品文档", result)
+            self.assertIn("diff内容", result)
+            self.assertNotIn("{self_product_doc}", result)
+            self.assertNotIn("{diff_text}", result)
+        finally:
+            from pathlib import Path
+            from apps.intelligence.services.prompt_loader import PROMPTS_DIR
+            tmp_file = PROMPTS_DIR / f"{test_name}.md"
+            if tmp_file.exists():
+                tmp_file.unlink()

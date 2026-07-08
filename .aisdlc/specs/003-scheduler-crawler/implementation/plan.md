@@ -354,7 +354,7 @@ status: draft
   def _fetch_with_httpx(url: str) -> str:
       """httpx GET，返回 HTML 字符串，失败返回空字符串。"""
       try:
-          resp = httpx.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+          resp = httpx.get(url, timeout=30, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0"})
           resp.raise_for_status()
           return resp.text
       except httpx.RequestError as e:
@@ -648,8 +648,12 @@ status: draft
               ],
               cron="*/5 * * * *",
               is_active=True,
-              next_run_at=timezone.now() - timedelta(minutes=1),  # 已过期，触发执行
           )
+          # 绕过 save() 覆盖，手动设 next_run_at 为过去时间触发执行
+          MonitorProject.objects.filter(pk=project.pk).update(
+              next_run_at=timezone.now() - timedelta(minutes=1)
+          )
+          project.refresh_from_db()
           scheduler_service.run_scan()
           # 7 条 DataSnapshot
           self.assertEqual(DataSnapshot.objects.filter(project=project).count(), 7)

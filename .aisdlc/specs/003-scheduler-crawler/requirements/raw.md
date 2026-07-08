@@ -81,3 +81,17 @@
   4. markdown 行数判断（< 3 行降级）基于 clean_markdown
 - 关键决策：raw/clean 语义 → raw=原始HTML, clean=去噪后MD
 - 遗留歧义：无
+
+### R1-Q7：plan 评审第二轮 7 项默认推断（2026-07-08）
+
+- 本轮结论：7 项实现层细节全部给出默认推断并接受。
+- 本轮约束：
+  1. T6 测试中 create 后用 `filter(pk=...).update(next_run_at=过去时间)` 绕过 save() 覆盖
+  2. T4 `save(update_fields=["next_run_at"])` 接受多余 DB 查询，不改
+  3. run_scan 崩溃后重复执行可接受（先执行后更新 next_run_at 不变）
+  4. Playwright 每次 launch/close 不复用 browser 实例
+  5. 现有记录 next_run_at=NULL 在首次扫描时被触发执行（之后正常更新）
+  6. 测试环境不启动 scheduler（RUN_MAIN 未设），plan 不额外声明
+  7. httpx 设置 `follow_redirects=True` 提高采集成功率
+- 关键决策：7 项全部接受"跑得通"优先原则
+- 遗留歧义：无

@@ -163,6 +163,7 @@ def _process_url(project, url, title, now):
                 IntelligenceFeed.objects.create(
                     project=project,
                     job_status=IntelligenceFeed.JobStatus.NO_CHANGE,
+                    diff_text="",
                     published_at=now,
                 )
                 logger.info(f"[熔断] {url} 文本 diff 为空 → NO_CHANGE")
@@ -178,6 +179,7 @@ def _process_url(project, url, title, now):
                 project=project,
                 job_status=IntelligenceFeed.JobStatus.ERROR_CRAWL,
                 change_summary=f"LLM diff 判断失败: {e}",
+                diff_text=diff_text,
                 published_at=now,
             )
             return
@@ -187,6 +189,7 @@ def _process_url(project, url, title, now):
                 project=project,
                 job_status=IntelligenceFeed.JobStatus.NO_CHANGE,
                 change_summary=judge_result.get("reason", "LLM 判断无意义变化"),
+                diff_text=diff_text,
                 published_at=now,
             )
             logger.info(f"[熔断] {url} LLM 判断无意义变化 → NO_CHANGE")
@@ -218,6 +221,7 @@ def _process_url(project, url, title, now):
         strategic_intent=intel_result.strategic_intent,
         action_suggestion=intel_result.action_suggestion,
         evidence_diff=intel_result.evidence_diff,
+        diff_text=diff_text,
         published_at=now,
     )
     logger.info(f"[情报入库] {url} → feed {feed.id} CHANGED")

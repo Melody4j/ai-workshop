@@ -755,15 +755,15 @@ class Command(BaseCommand):
 
 | Task | repo | branch | commit | changed_files |
 |------|------|--------|--------|---------------|
-| T1 | root | 006-firecrawl-crawler | `<TBD>` | settings.py, .env.example, base.txt |
-| T2 | root | 006-firecrawl-crawler | `<TBD>` | crawler_service.py |
-| T3 | root | 006-firecrawl-crawler | `<TBD>` | test_crawler_service.py |
-| T4 | root | 006-firecrawl-crawler | `<TBD>` | scheduler_service.py |
-| T5 | root | 006-firecrawl-crawler | `<TBD>` | serializers.py |
-| T6 | root | 006-firecrawl-crawler | `<TBD>` | projects.ts |
-| T7 | root | 006-firecrawl-crawler | `<TBD>` | ProjectForm.vue, ProjectFormPage.vue |
-| T8 | root | 006-firecrawl-crawler | `<TBD>` | management/commands/clear_snapshots.py |
-| T9 | root | 006-firecrawl-crawler | `<TBD>` | test_crawler_service.py |
-| T10 | root | 006-firecrawl-crawler | `<TBD>` | test_scheduler_service.py |
-| T11 | root | 006-firecrawl-crawler | `<TBD>` | test_api.py |
-| T12 | root | 006-firecrawl-crawler | `<TBD>` | — |
+| T1 | root | 006-firecrawl-crawler | 4bebf02 | settings.py, .env.example, base.txt |
+| T2 | root | 006-firecrawl-crawler | 9bb2e3b | crawler_service.py |
+| T3 | root | 006-firecrawl-crawler | dc83157 | test_crawler_service.py |
+| T4 | root | 006-firecrawl-crawler | 01848fd | scheduler_service.py |
+| T5 | root | 006-firecrawl-crawler | 2ba4083 | serializers.py |
+| T6 | root | 006-firecrawl-crawler | fd37f42 | projects.ts |
+| T7 | root | 006-firecrawl-crawler | fd37f42 | ProjectForm.vue, ProjectFormPage.vue |
+| T8 | root | 006-firecrawl-crawler | a78f381 | management/commands/clear_snapshots.py |
+| T9 | root | 006-firecrawl-crawler | dc83157 | test_crawler_service.py（T3 已完成，合并） |
+| T10 | root | 006-firecrawl-crawler | 74a5930 | test_scheduler_service.py |
+| T11 | root | 006-firecrawl-crawler | 74a5930 | test_api.py |
+| T12 | root | 006-firecrawl-crawler | — | 122 tests passed + Django check + frontend build |

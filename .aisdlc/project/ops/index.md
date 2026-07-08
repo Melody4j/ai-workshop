@@ -26,6 +26,15 @@
 - 生产环境限制：gunicorn/uwsgi 不设 `RUN_MAIN`，scheduler 不会自动启动；多 worker 部署会重复触发
 - 采集文件存储：`{项目根}/data/snapshots/{project_id}/{YYYYMMDD}/{HHMMSS}_{domain}.{ext}`
 
+## 飞书推送运维
+
+- 配置项：`SITE_BASE_URL`（环境变量，默认 `http://localhost:5173`），用于飞书卡片按钮绝对 URL
+- 推送服务：`backend/apps/intelligence/services/feishu_service.py`
+- 手动推送 API：`POST /api/feeds/{id}/push`（仅 CHANGED feed 可推送）
+- MD 下载 API：`GET /api/feeds/{id}/download_md`
+- 推送重试：2 次重试间隔 30s（同步 sleep，不引入消息队列）
+- 推送状态追踪：`IntelligenceFeed.push_status`（NOT_PUSHED / PUSHED / PUSH_FAILED）
+
 ## Evidence
 
 - [README.md](../../../README.md)
@@ -34,6 +43,7 @@
 - [backend/apps/intelligence/tests/test_api.py](../../../backend/apps/intelligence/tests/test_api.py)
 - [backend/apps/intelligence/tests/test_models.py](../../../backend/apps/intelligence/tests/test_models.py)
 - [backend/apps/intelligence/tests/test_scheduler_service.py](../../../backend/apps/intelligence/tests/test_scheduler_service.py)
+- [backend/apps/intelligence/tests/test_feishu_service.py](../../../backend/apps/intelligence/tests/test_feishu_service.py)
 - [verification/report-2026-07-08-unknown.md](../../specs/001-competitive-intel-agent/verification/report-2026-07-08-unknown.md)
 
 ## Evidence Gaps

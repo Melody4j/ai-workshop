@@ -3,17 +3,17 @@
 ## 状态
 
 - 当前状态：`Active`
-- 最近一次 merge-back：`003-scheduler-crawler`
+- 最近一次 merge-back：`005-feishu-push`
 
 ## 已晋升资产
 
 | type | entry | source_spec | status | note |
 |---|---|---|---|---|
 | ADR | [adr-001-vue-django-split-monolith.md](./adr/adr-001-vue-django-split-monolith.md) | `001-competitive-intel-agent` | Merged | 记录前后端分离单体的长期架构决策 |
-| API Contract | [components/intelligence-api.md#api-contract](./components/intelligence-api.md#api-contract) | `001-competitive-intel-agent` | Merged | 任务/报告/评分 API 入口与护栏 |
-| Data Contract | [components/intelligence-models.md#data-contract](./components/intelligence-models.md#data-contract) | `001-competitive-intel-agent` + `003-scheduler-crawler` | Merged | `MonitorProject`（含 next_run_at）/ `IntelligenceFeed` / `DataSnapshot`（路径字段）长期数据口径 |
+| API Contract | [components/intelligence-api.md#api-contract](./components/intelligence-api.md#api-contract) | `001-competitive-intel-agent` + `005-feishu-push` | Merged | 任务/报告/评分 API + 飞书推送/MD 下载端点入口与护栏 |
+| Data Contract | [components/intelligence-models.md#data-contract](./components/intelligence-models.md#data-contract) | `001-competitive-intel-agent` + `003-scheduler-crawler` + `005-feishu-push` | Merged | `MonitorProject`（含 next_run_at）/ `IntelligenceFeed`（含 push_status）/ `DataSnapshot`（路径字段）长期数据口径 |
 | Service Contract | [components/intelligence-scheduler.md#service-contract](./components/intelligence-scheduler.md#service-contract) | `003-scheduler-crawler` | Merged | 调度服务+采集服务入口、不变量、运维限制 |
-| Ops | [ops/index.md](./ops/index.md) | `001-competitive-intel-agent` + `003-scheduler-crawler` | Merged | 本地启动、构建、验证入口、依赖清单、scheduler 运维 |
+| Ops | [ops/index.md](./ops/index.md) | `001-competitive-intel-agent` + `003-scheduler-crawler` + `005-feishu-push` | Merged | 本地启动、构建、验证入口、依赖清单、scheduler 运维、飞书推送运维 |
 | NFR | [nfr.md](./nfr.md) | `001-competitive-intel-agent` | Merged | 当前质量/安全门禁基线与缺口 |
 
 ## 未完成晋升项

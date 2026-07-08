@@ -1,9 +1,17 @@
+import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# 加载 .env 文件（开发环境）
+load_dotenv(BASE_DIR / ".env")
 DATA_DIR = BASE_DIR / "data"
 # 采集文件存储根目录（HTML/MD 文件落盘位置）
 SNAPSHOT_STORAGE_DIR = BASE_DIR.parent / "data"
+# 飞书卡片中跳转链接的站点基础 URL（开发环境默认 localhost:5173）
+SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "http://localhost:5173")
 
 SECRET_KEY = "dev-only-secret-key"
 DEBUG = True
@@ -128,3 +136,10 @@ LOGGING = {
         "handlers": ["console"],
     },
 }
+
+# LLM 配置（OpenAI 兼容 API）
+LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1")
+LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-4o-mini")
+LLM_TEMPERATURE = float(os.environ.get("LLM_TEMPERATURE", "0.3"))
+LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "4096"))

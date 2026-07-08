@@ -309,13 +309,8 @@ class FeedOptimizePromptViewTest(APITestCase):
 
     def test_optimize_prompt_endpoint(self) -> None:
         """POST /api/feeds/{id}/optimize_prompt → 200 + 优化结果摘要"""
-        with patch("apps.intelligence.services.prompt_optimizer_service.get_instructor_client") as mock_client_fn:
-            mock_client = MagicMock()
-            mock_client_fn.return_value = mock_client
-            mock_client.chat.completions.create.return_value = MagicMock(
-                intel_system="优化后的system prompt" + "x" * 50,
-                intel_user="优化后的user prompt" + "x" * 50,
-            )
+        with patch("apps.intelligence.services.prompt_optimizer_service.optimize_prompts") as mock_opt:
+            mock_opt.return_value = {"intel_system_version": 1, "intel_user_version": 1}
 
             response = self.client.post(
                 reverse("feed-optimize-prompt", kwargs={"pk": self.feed.pk})
@@ -324,6 +319,7 @@ class FeedOptimizePromptViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("intel_system_version", response.data)
         self.assertIn("intel_user_version", response.data)
+        mock_opt.assert_called_once_with(self.feed.pk)
 
     def test_optimize_prompt_feed_not_found(self) -> None:
         """不存在的 feed_id → 404"""

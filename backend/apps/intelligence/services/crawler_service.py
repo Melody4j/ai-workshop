@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 POLL_INTERVAL = 5       # 轮询间隔（秒）
 POLL_TIMEOUT = 120      # 总超时（秒）
-CRAWL_LIMIT = 10        # 最大爬取页数
+CRAWL_LIMIT = 50        # 最大爬取页数
 
 
 def fetch_with_firecrawl(url: str, crawl_hint: str = "") -> tuple[str, str]:
@@ -24,16 +24,21 @@ def fetch_with_firecrawl(url: str, crawl_hint: str = "") -> tuple[str, str]:
     crawl_hint 非空时作为 prompt 传入，引导 AI 爬虫聚焦内容。
     失败返回 ("", "")。
     """
+    logger.info(f"[Firecrawl] 开始采集 url={url}, crawl_hint={crawl_hint!r}, limit={CRAWL_LIMIT}")
+
     # 1. 带 prompt crawl（如果 crawl_hint 非空）
     if crawl_hint.strip():
         raw_html, clean_md = _crawl_and_merge(url, crawl_hint.strip())
         if raw_html or clean_md:
+            logger.info(f"[Firecrawl] 采集完成(带prompt) url={url}, raw={len(raw_html)} chars, md={len(clean_md)} chars")
             return (raw_html, clean_md)
         # 0 页 → 回退无 prompt
-        logger.warning(f"crawl 带 prompt 返回 0 页，回退无 prompt: {url}")
+        logger.warning(f"[Firecrawl] 带 prompt 返回 0 页，回退无 prompt: {url}")
 
     # 2. 无 prompt crawl
-    return _crawl_and_merge(url, "")
+    raw_html, clean_md = _crawl_and_merge(url, "")
+    logger.info(f"[Firecrawl] 采集完成 url={url}, raw={len(raw_html)} chars, md={len(clean_md)} chars")
+    return (raw_html, clean_md)
 
 
 def _crawl_and_merge(url: str, prompt: str) -> tuple[str, str]:
@@ -95,7 +100,18 @@ def _start_crawl(url: str, prompt: str) -> str:
         logger.error(f"Firecrawl start crawl 不成功: {data}")
         return ""
 
-    return data.get("id", "")
+    job_id = data.get("id", "")
+    ai_opts = data.get("promptGeneratedOptions")
+    final_opts = data.get("finalCrawlerOptions")
+    logger.info(f"[Firecrawl] crawl 任务已创建 job_id={job_id}, prompt={prompt!r}")
+    if ai_opts:
+        logger.info(f"[Firecrawl] AI 生成参数: {ai_opts}")
+    if final_opts:
+        logger.info(f"[Firecrawl] 最终爬取参数: includePaths={final_opts.get('includePaths')}, "
+                     f"maxDepth={final_opts.get('maxDepth')}, limit={final_opts.get('limit')}, "
+                     f"crawlEntireDomain={final_opts.get('crawlEntireDomain')}")
+
+    return job_id
 
 
 def _poll_crawl(job_id: str) -> list:
@@ -125,7 +141,17 @@ def _poll_crawl(job_id: str) -> list:
         status = data.get("status", "")
 
         if status == "completed":
-            return data.get("data", [])
+            documents = data.get("data", [])
+            total = data.get("total", len(documents))
+            completed = data.get("completed", len(documents))
+            credits = data.get("creditsUsed", "?")
+            logger.info(f"[Firecrawl] 轮询完成 job_id={job_id}, 返回 {len(documents)} 页 "
+                        f"(total={total}, completed={completed}, creditsUsed={credits})")
+            for i, doc in enumerate(documents):
+                src_url = doc.get("metadata", {}).get("sourceURL", "N/A")
+                md_len = len(doc.get("markdown", ""))
+                logger.info(f"[Firecrawl]   页 {i+1}: {src_url} ({md_len} chars)")
+            return documents
         elif status in ("failed", "cancelled"):
             logger.error(f"Firecrawl job {status}: {job_id}")
             return []
@@ -154,7 +180,10 @@ def _merge_documents(documents: list) -> tuple[str, str]:
         if html:
             html_parts.append(f"\n<!-- {url} -->\n{html}")
 
-    return ("\n".join(html_parts), "\n".join(md_parts))
+    raw_html = "\n".join(html_parts)
+    clean_md = "\n".join(md_parts)
+    logger.info(f"[Firecrawl] 合并完成: {len(documents)} 页 → raw_html={len(raw_html)} chars, clean_md={len(clean_md)} chars")
+    return (raw_html, clean_md)
 
 
 def fetch_and_clean(url: str, crawl_hint: str = "") -> tuple[str, str]:

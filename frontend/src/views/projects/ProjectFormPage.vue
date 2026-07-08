@@ -23,7 +23,7 @@ const emptyProject: ProjectPayload = {
   competitor_contexts: [
     { title: "", url: "", supplement_doc_name: "", supplement_doc_content: "" },
   ],
-  cron: "0 9 * * *",
+  cron: "* * * * *",
   feishu_webhook: "",
   is_active: true,
 }

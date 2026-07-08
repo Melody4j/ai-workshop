@@ -31,12 +31,12 @@ const form = reactive({
   project_name: "",
   self_product_doc: "",
   self_product_doc_name: "",
-  cron: "0 9 * * *",
+  cron: "* * * * *",
   feishu_webhook: "",
   is_active: true,
 })
 const cronDialogVisible = ref(false)
-const cronPickerExpression = ref("0 0 9 * * ?")
+const cronPickerExpression = ref("0 * * * * ?")
 const uploadError = ref("")
 const competitors = ref<CompetitorFormRow[]>([])
 
@@ -108,7 +108,7 @@ function toPickerCronExpression(expression: string): string {
   }
 
   if (segments.length !== 5) {
-    return "0 0 9 * * ?"
+    return "0 * * * * ?"
   }
 
   const [minute, hour, day, month, week] = segments
@@ -125,7 +125,7 @@ function toBackendCronExpression(expression: string): string {
   }
 
   if (segments.length < 6) {
-    return form.cron.trim() || "0 9 * * *"
+    return form.cron.trim() || "* * * * *"
   }
 
   const [, minute, hour, day, month, week] = segments
@@ -134,6 +134,114 @@ function toBackendCronExpression(expression: string): string {
 
   return `${minute} ${hour} ${normalizedDay} ${month} ${normalizedWeek}`
 }
+
+const weekLabels = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
+
+function cronToChinese(cron: string): string {
+  const parts = cron.trim().split(/\s+/)
+  if (parts.length !== 5) return "无效的 cron 表达式"
+
+  const [minute, hour, day, month, week] = parts
+  const isWildcard = (v: string) => v === "*" || v === "?"
+
+  // -- 日期部分 --
+  const dateParts: string[] = []
+
+  if (!isWildcard(month)) {
+    if (month.includes(",")) {
+      dateParts.push(month.split(",").map(m => `${m}月`).join("、"))
+    } else if (month.includes("-")) {
+      const [a, b] = month.split("-")
+      dateParts.push(`${a}月到${b}月`)
+    } else if (month.startsWith("*/")) {
+      dateParts.push(`每${month.slice(2)}个月`)
+    } else {
+      dateParts.push(`${month}月`)
+    }
+  }
+
+  if (!isWildcard(day)) {
+    if (day.includes(",")) {
+      dateParts.push(day.split(",").map(d => `${d}日`).join("、"))
+    } else if (day.includes("-")) {
+      const [a, b] = day.split("-")
+      dateParts.push(`${a}日到${b}日`)
+    } else if (day.startsWith("*/")) {
+      dateParts.push(`每${day.slice(2)}天`)
+    } else {
+      dateParts.push(`${day}日`)
+    }
+  }
+
+  if (!isWildcard(week)) {
+    if (week.includes(",")) {
+      dateParts.push(week.split(",").map(w => weekLabels[parseInt(w)] || w).join("、"))
+    } else if (week.includes("-")) {
+      const [a, b] = week.split("-")
+      dateParts.push(`${weekLabels[parseInt(a)] || a}到${weekLabels[parseInt(b)] || b}`)
+    } else {
+      dateParts.push(`每${weekLabels[parseInt(week)] || week}`)
+    }
+  }
+
+  // -- 时间部分 --
+  const mIsSingle = /^\d+$/.test(minute)
+  const hIsSingle = /^\d+$/.test(hour)
+  let timeStr = ""
+
+  if (isWildcard(minute) && isWildcard(hour)) {
+    timeStr = "每分钟"
+  } else if (minute.startsWith("*/") && isWildcard(hour)) {
+    timeStr = `每${minute.slice(2)}分钟`
+  } else if (isWildcard(minute) && hour.startsWith("*/")) {
+    timeStr = `每${hour.slice(2)}小时的每分钟`
+  } else if (minute.startsWith("*/") && hour.startsWith("*/")) {
+    timeStr = `每${hour.slice(2)}小时每${minute.slice(2)}分钟`
+  } else if (mIsSingle && hIsSingle) {
+    timeStr = `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`
+  } else if (minute === "0" && isWildcard(hour)) {
+    timeStr = "每小时整点"
+  } else if (minute === "0" && hour.startsWith("*/")) {
+    timeStr = `每${hour.slice(2)}小时整点`
+  } else if (minute === "0" && hour.includes("-")) {
+    const [a, b] = hour.split("-")
+    timeStr = `${a.padStart(2, "0")}:00 到 ${b.padStart(2, "0")}:00 的整点`
+  } else if (mIsSingle && isWildcard(hour)) {
+    timeStr = `每小时的第${minute}分钟`
+  } else if (mIsSingle && hour.startsWith("*/")) {
+    timeStr = `每${hour.slice(2)}小时的第${minute}分钟`
+  } else if (mIsSingle && hour.includes(",")) {
+    timeStr = hour.split(",").map(h => `${h.padStart(2, "0")}:${minute.padStart(2, "0")}`).join("、")
+  } else if (minute.includes(",") && isWildcard(hour)) {
+    timeStr = `每小时的${minute.split(",").map(m => `${m}分`).join("、")}`
+  } else if (minute.includes(",") && hIsSingle) {
+    timeStr = `${hour.padStart(2, "0")}时${minute.split(",").map(m => `${m}分`).join("、")}`
+  } else if (minute.includes("-") && isWildcard(hour)) {
+    const [a, b] = minute.split("-")
+    timeStr = `每小时的${a}到${b}分`
+  } else if (minute.includes("-") && hIsSingle) {
+    const [a, b] = minute.split("-")
+    timeStr = `${hour.padStart(2, "0")}时${a}到${b}分`
+  } else if (minute.startsWith("*/") && hIsSingle) {
+    timeStr = `${hour.padStart(2, "0")}时每${minute.slice(2)}分钟`
+  } else {
+    const hDesc = isWildcard(hour) ? "每小时" : hour
+    const mDesc = isWildcard(minute) ? "每分钟" : minute
+    timeStr = `${hDesc} ${mDesc}`
+  }
+
+  // -- 组合 --
+  const dateStr = dateParts.join("、")
+  if (dateStr) {
+    return `${dateStr} ${timeStr}执行`
+  }
+  if (timeStr.startsWith("每")) {
+    return `${timeStr}执行`
+  }
+  return `每天 ${timeStr}执行`
+}
+
+const cronSemantic = computed(() => cronToChinese(form.cron))
 
 function addCompetitor() {
   competitors.value.push(createEmptyCompetitor())
@@ -363,6 +471,10 @@ function onSubmit() {
               <el-button @click="openCronDialog">配置表达式</el-button>
             </template>
           </el-input>
+          <div class="cron-semantic">
+            <span class="cron-semantic__label">语义</span>
+            <strong class="cron-semantic__text">{{ cronSemantic }}</strong>
+          </div>
           <div class="cron-value">
             <span>当前保存值（5 段 crontab）</span>
             <strong>{{ form.cron }}</strong>

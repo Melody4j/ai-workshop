@@ -256,6 +256,27 @@ a {
   width: 100%;
 }
 
+.cron-semantic {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e7e7e7;
+}
+
+.cron-semantic__label {
+  color: #999;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.cron-semantic__text {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
 .cron-value {
   padding-top: 12px;
   border-top: 1px solid #dedede;

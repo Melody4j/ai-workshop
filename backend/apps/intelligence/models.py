@@ -14,6 +14,8 @@ class MonitorProject(TimestampedModel):
     project_name = models.CharField(max_length=200)
     competitor_urls = models.JSONField(default=list, blank=True)
     self_product_doc = models.TextField(blank=True)
+    self_product_doc_name = models.CharField(max_length=255, blank=True)
+    competitor_contexts = models.JSONField(default=list, blank=True)
     cron = models.CharField(max_length=100, default="0 9 * * *")
     feishu_webhook = models.URLField(blank=True)
     refined_rules = models.TextField(blank=True)

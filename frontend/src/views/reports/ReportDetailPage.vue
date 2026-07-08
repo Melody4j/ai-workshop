@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue"
+import { ElMessage } from "element-plus"
 import { useRoute, useRouter } from "vue-router"
 
 import RatingForm from "../../components/reports/RatingForm.vue"
@@ -10,7 +11,6 @@ const router = useRouter()
 const report = ref<ReportDetail | null>(null)
 const loading = ref(false)
 const saving = ref(false)
-const error = ref("")
 
 const markdownPreview = computed(() => {
   if (!report.value) {
@@ -94,11 +94,11 @@ startxref
 
 async function loadReport() {
   loading.value = true
-  error.value = ""
   try {
     report.value = await getReport(Number(route.params.id))
   } catch (err) {
-    error.value = err instanceof Error ? err.message : "Failed to load report."
+    ElMessage.error(err instanceof Error ? err.message : "执行详情加载失败。")
+    report.value = null
   } finally {
     loading.value = false
   }
@@ -113,8 +113,9 @@ async function saveRating(payload: { user_feedback: -1 | 1; user_comment: string
       report.value.user_feedback === null
         ? await createRating(report.value.id, payload)
         : await updateRating(report.value.id, payload)
+    ElMessage.success("评分已保存。")
   } catch (err) {
-    error.value = err instanceof Error ? err.message : "Failed to save rating."
+    ElMessage.error(err instanceof Error ? err.message : "评分保存失败。")
   } finally {
     saving.value = false
   }
@@ -127,8 +128,9 @@ async function removeRating() {
   try {
     await clearRating(report.value.id)
     await loadReport()
+    ElMessage.success("评分已清空。")
   } catch (err) {
-    error.value = err instanceof Error ? err.message : "Failed to clear rating."
+    ElMessage.error(err instanceof Error ? err.message : "评分清空失败。")
   } finally {
     saving.value = false
   }
@@ -144,69 +146,71 @@ onMounted(loadReport)
         <p class="page-kicker">任务监控</p>
         <h2>执行详情</h2>
       </div>
-      <button class="ghost-button" @click="router.push('/monitoring')">返回任务监控</button>
+      <el-button text @click="router.push('/monitoring')">返回任务监控</el-button>
     </div>
 
-    <p v-if="error" class="error-text">{{ error }}</p>
-    <p v-else-if="loading">正在加载执行详情...</p>
-
-    <template v-else-if="report">
-      <article class="panel">
+    <template v-if="report">
+      <el-card shadow="never">
         <div class="page-header">
           <div>
             <p class="page-kicker">{{ report.project.project_name }}</p>
             <h2>报告 #{{ report.id }}</h2>
           </div>
-          <span class="badge">{{ report.job_status === "CHANGED" ? "重大变更" : report.job_status }}</span>
+          <el-tag effect="plain" round>
+            {{ report.job_status === "CHANGED" ? "重大变更" : report.job_status }}
+          </el-tag>
         </div>
 
-        <div class="report-preview-grid">
-          <section class="report-preview">
-            <div class="page-header page-header--compact">
-              <div>
-                <p class="page-kicker">Markdown</p>
-                <h3>MD 分析</h3>
+        <el-row :gutter="16">
+          <el-col :xs="24" :xl="12">
+            <el-card shadow="never" class="preview-card">
+              <template #header>
+                <div class="page-header page-header--compact">
+                  <div>
+                    <p class="page-kicker">Markdown</p>
+                    <h3>MD 分析</h3>
+                  </div>
+                  <el-button @click="downloadMarkdown">下载 MD</el-button>
+                </div>
+              </template>
+              <pre class="markdown-preview">{{ markdownPreview }}</pre>
+            </el-card>
+          </el-col>
+          <el-col :xs="24" :xl="12">
+            <el-card shadow="never" class="preview-card">
+              <template #header>
+                <div class="page-header page-header--compact">
+                  <div>
+                    <p class="page-kicker">PDF</p>
+                    <h3>PDF 摘要</h3>
+                  </div>
+                  <el-button @click="downloadPdfSummary">下载 PDF</el-button>
+                </div>
+              </template>
+              <div class="pdf-preview">
+                <p>摘要已按 PDF 下载形式提供。</p>
+                <p>变化摘要：{{ report.change_summary }}</p>
+                <p>行动建议：{{ report.action_suggestion }}</p>
               </div>
-              <button class="secondary-button" @click="downloadMarkdown">下载 MD</button>
-            </div>
-            <pre class="markdown-preview">{{ markdownPreview }}</pre>
-          </section>
+            </el-card>
+          </el-col>
+        </el-row>
 
-          <section class="report-preview">
-            <div class="page-header page-header--compact">
-              <div>
-                <p class="page-kicker">PDF</p>
-                <h3>PDF 摘要</h3>
-              </div>
-              <button class="secondary-button" @click="downloadPdfSummary">下载 PDF</button>
-            </div>
-            <div class="pdf-preview">
-              <p>摘要已按 PDF 下载形式提供。</p>
-              <p>变化摘要：{{ report.change_summary }}</p>
-              <p>行动建议：{{ report.action_suggestion }}</p>
-            </div>
-          </section>
-        </div>
-
-        <div class="meta-grid">
-          <div>
-            <dt>HTML 报告</dt>
-            <dd>{{ report.html_report_path || "-" }}</dd>
-          </div>
-          <div>
-            <dt>MD 报告</dt>
-            <dd>{{ report.md_table_path || "-" }}</dd>
-          </div>
-          <div>
-            <dt>发布时间</dt>
-            <dd>{{ new Date(report.published_at).toLocaleString() }}</dd>
-          </div>
-          <div>
-            <dt>反馈状态</dt>
-            <dd>{{ report.user_feedback ?? "未评分" }}</dd>
-          </div>
-        </div>
-      </article>
+        <el-descriptions :column="2" border class="detail-descriptions">
+          <el-descriptions-item label="HTML 报告">
+            {{ report.html_report_path || "-" }}
+          </el-descriptions-item>
+          <el-descriptions-item label="MD 报告">
+            {{ report.md_table_path || "-" }}
+          </el-descriptions-item>
+          <el-descriptions-item label="发布时间">
+            {{ new Date(report.published_at).toLocaleString() }}
+          </el-descriptions-item>
+          <el-descriptions-item label="反馈状态">
+            {{ report.user_feedback ?? "未评分" }}
+          </el-descriptions-item>
+        </el-descriptions>
+      </el-card>
 
       <RatingForm
         :initial-feedback="report.user_feedback"
@@ -216,5 +220,9 @@ onMounted(loadReport)
         @clear="removeRating"
       />
     </template>
+
+    <el-card v-else shadow="never" class="empty-panel">
+      <el-empty :description="loading ? ' ' : '当前没有可展示的执行详情。'" />
+    </el-card>
   </section>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue"
+import { ElMessage } from "element-plus"
 import { useRouter } from "vue-router"
 
 import { disableProject, listProjects, type Project } from "../../api/projects"
@@ -7,23 +8,27 @@ import { disableProject, listProjects, type Project } from "../../api/projects"
 const router = useRouter()
 const projects = ref<Project[]>([])
 const loading = ref(false)
-const error = ref("")
 
 async function loadProjects() {
   loading.value = true
-  error.value = ""
   try {
     projects.value = await listProjects()
   } catch (err) {
-    error.value = err instanceof Error ? err.message : "Failed to load projects."
+    ElMessage.error(err instanceof Error ? err.message : "任务列表加载失败。")
+    projects.value = []
   } finally {
     loading.value = false
   }
 }
 
 async function archiveProject(id: number) {
-  await disableProject(id)
-  await loadProjects()
+  try {
+    await disableProject(id)
+    ElMessage.success("任务已停用。")
+    await loadProjects()
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : "任务停用失败。")
+  }
 }
 
 onMounted(loadProjects)
@@ -36,23 +41,29 @@ onMounted(loadProjects)
         <p class="page-kicker">任务管理</p>
         <h2>任务管理</h2>
       </div>
-      <button class="primary-button" @click="router.push('/projects/new')">新建任务</button>
+      <el-button type="primary" @click="router.push('/projects/new')">新建任务</el-button>
     </div>
 
     <section class="card-grid">
-      <article v-if="projects.length === 0" class="panel empty-panel">
-        <p class="empty-state">当前还没有监控任务。</p>
-      </article>
+      <el-card v-if="projects.length === 0" shadow="never" class="empty-panel">
+        <el-empty description="当前还没有监控任务。" />
+      </el-card>
 
-      <article v-for="project in projects" :key="project.id" class="panel panel--compact">
+      <el-card
+        v-for="project in projects"
+        :key="project.id"
+        class="panel-card panel-card--compact"
+        shadow="never"
+        v-loading="loading"
+      >
         <div class="page-header page-header--compact">
           <div>
             <p class="page-kicker">任务 #{{ project.id }}</p>
             <h3>{{ project.project_name }}</h3>
           </div>
-          <span class="badge" :class="{ 'badge--muted': !project.is_active }">
+          <el-tag :type="project.is_active ? 'info' : 'default'" effect="plain" round>
             {{ project.is_active ? "已启用" : "已停用" }}
-          </span>
+          </el-tag>
         </div>
 
         <dl class="meta-grid">
@@ -67,21 +78,19 @@ onMounted(loadProjects)
         </dl>
 
         <div class="action-row action-row--end">
-          <button class="secondary-button" @click="router.push(`/projects/${project.id}/edit`)">
-            编辑
-          </button>
-          <button class="ghost-button" @click="router.push(`/monitoring?project=${project.id}`)">
+          <el-button @click="router.push(`/projects/${project.id}/edit`)">编辑</el-button>
+          <el-button text @click="router.push(`/monitoring?project=${project.id}`)">
             查看监控
-          </button>
-          <button
-            class="ghost-button"
+          </el-button>
+          <el-button
+            text
             :disabled="!project.is_active"
             @click="archiveProject(project.id)"
           >
             停用任务
-          </button>
+          </el-button>
         </div>
-      </article>
+      </el-card>
     </section>
   </section>
 </template>

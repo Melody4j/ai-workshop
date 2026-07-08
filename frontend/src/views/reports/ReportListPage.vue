@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue"
+import { computed, onMounted, ref, watch } from "vue"
+import { ElMessage } from "element-plus"
 import { useRoute, useRouter } from "vue-router"
 
 import { ApiError } from "../../api/client"
@@ -12,7 +13,6 @@ const router = useRouter()
 const projects = ref<Project[]>([])
 const reports = ref<ReportSummary[]>([])
 const loading = ref(false)
-const error = ref("")
 const statusLabel = {
   CHANGED: "重大变更",
   NO_CHANGE: "无变更",
@@ -29,14 +29,13 @@ async function loadProjects() {
 
 async function loadReports() {
   loading.value = true
-  error.value = ""
   try {
     reports.value = await listReports(
       selectedProjectId.value ? { project: selectedProjectId.value } : {},
     )
   } catch (err) {
-    error.value =
-      err instanceof ApiError ? err.message : "任务执行记录加载失败，请稍后重试。"
+    ElMessage.error(err instanceof ApiError ? err.message : "任务执行记录加载失败，请稍后重试。")
+    reports.value = []
   } finally {
     loading.value = false
   }
@@ -44,21 +43,29 @@ async function loadReports() {
 
 async function initialize() {
   loading.value = true
-  error.value = ""
   try {
     await loadProjects()
     reports.value = await listReports(
       selectedProjectId.value ? { project: selectedProjectId.value } : {},
     )
   } catch (err) {
-    error.value =
-      err instanceof ApiError ? err.message : "任务执行记录加载失败，请稍后重试。"
+    ElMessage.error(err instanceof ApiError ? err.message : "任务执行记录加载失败，请稍后重试。")
+    projects.value = []
+    reports.value = []
   } finally {
     loading.value = false
   }
 }
 
 onMounted(initialize)
+
+watch(selectedProjectId, async (next, previous) => {
+  if (next === previous) {
+    return
+  }
+
+  await loadReports()
+})
 </script>
 
 <template>
@@ -68,54 +75,68 @@ onMounted(initialize)
         <p class="page-kicker">任务监控</p>
         <h2>任务执行情况</h2>
       </div>
-      <div class="action-row">
-        <button v-if="selectedProjectId" class="ghost-button" @click="router.push('/monitoring')">
+      <div class="monitoring-toolbar">
+        <el-button v-if="selectedProjectId" text @click="router.push('/monitoring')">
           返回全部列表
-        </button>
-        <button class="secondary-button" @click="loadReports">刷新</button>
+        </el-button>
+        <el-button :loading="loading" @click="loadReports">刷新</el-button>
       </div>
     </div>
 
-    <section v-if="selectedProject" class="panel panel--compact">
-      <div class="page-header page-header--compact">
-        <div>
-          <p class="page-kicker">当前任务</p>
-          <h3>{{ selectedProject.project_name }}</h3>
-        </div>
-        <span class="badge">仅查看该任务执行记录</span>
-      </div>
-    </section>
+    <el-alert
+      v-if="selectedProject"
+      :title="`当前仅查看任务：${selectedProject.project_name}`"
+      type="info"
+      :closable="false"
+    />
 
-    <section class="monitoring-list">
-      <article v-if="reports.length === 0" class="panel empty-panel">
-        <p class="empty-state">当前没有可展示的任务执行记录。</p>
-      </article>
+    <el-card shadow="never">
+      <el-empty v-if="reports.length === 0" description="当前没有可展示的任务执行记录。" />
 
-      <article v-for="report in reports" :key="report.id" class="monitoring-row">
-        <div class="monitoring-row__action">
-          <button
-            v-if="report.job_status === 'CHANGED'"
-            class="primary-button"
-            @click="router.push(`/monitoring/${report.id}`)"
-          >
-            查看详情
-          </button>
-        </div>
+      <el-table v-else :data="reports" class="monitoring-table" table-layout="auto">
+        <el-table-column label="任务" min-width="180">
+          <template #default="{ row }">
+            <div>
+              <p class="page-kicker">{{ row.project_name }}</p>
+              <strong>#{{ row.id }}</strong>
+            </div>
+          </template>
+        </el-table-column>
 
-        <div class="monitoring-row__content">
-          <div>
-            <p class="page-kicker">{{ report.project_name }}</p>
-            <h3>#{{ report.id }} {{ statusLabel[report.job_status] }}</h3>
-            <p>{{ report.change_summary }}</p>
-          </div>
+        <el-table-column label="执行情况" min-width="120">
+          <template #default="{ row }">
+            <el-tag effect="plain" round>{{ statusLabel[row.job_status] }}</el-tag>
+          </template>
+        </el-table-column>
 
-          <div class="monitoring-row__meta">
-            <span class="badge">{{ statusLabel[report.job_status] }}</span>
-            <span>评分：{{ report.user_feedback ?? "未评分" }}</span>
-            <span>{{ new Date(report.published_at).toLocaleString() }}</span>
-          </div>
-        </div>
-      </article>
-    </section>
+        <el-table-column label="变化摘要" min-width="320" prop="change_summary" />
+
+        <el-table-column label="评分" min-width="120">
+          <template #default="{ row }">
+            {{ row.user_feedback ?? "未评分" }}
+          </template>
+        </el-table-column>
+
+        <el-table-column label="执行时间" min-width="180">
+          <template #default="{ row }">
+            {{ new Date(row.published_at).toLocaleString() }}
+          </template>
+        </el-table-column>
+
+        <el-table-column label="操作" width="140" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              v-if="row.job_status === 'CHANGED'"
+              type="primary"
+              link
+              @click="router.push(`/monitoring/${row.id}`)"
+            >
+              查看详情
+            </el-button>
+            <span v-else class="table-placeholder">-</span>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
   </section>
 </template>

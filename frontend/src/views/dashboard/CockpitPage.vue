@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue"
+import { ElMessage } from "element-plus"
 import { useRouter } from "vue-router"
 
 import { ApiError } from "../../api/client"
@@ -10,7 +11,6 @@ const router = useRouter()
 const projects = ref<Project[]>([])
 const reports = ref<ReportSummary[]>([])
 const loading = ref(false)
-const error = ref("")
 
 const last24HoursReports = computed(() => {
   const now = Date.now()
@@ -30,14 +30,14 @@ const changedReports = computed(() =>
 
 async function loadCockpit() {
   loading.value = true
-  error.value = ""
   try {
     const [projectPayload, reportPayload] = await Promise.all([listProjects(), listReports()])
     projects.value = projectPayload
     reports.value = reportPayload
   } catch (err) {
-    error.value =
-      err instanceof ApiError ? err.message : "驾驶仓数据加载失败，请稍后重试。"
+    ElMessage.error(err instanceof ApiError ? err.message : "仪表盘数据加载失败，请稍后重试。")
+    projects.value = []
+    reports.value = []
   } finally {
     loading.value = false
   }
@@ -50,32 +50,36 @@ onMounted(loadCockpit)
   <section class="page-stack">
     <div class="page-header">
       <div>
-        <p class="page-kicker">驾驶舱</p>
-        <h2>监控驾驶仓</h2>
+        <p class="page-kicker">仪表盘</p>
+        <h2>监控仪表盘</h2>
       </div>
-      <button class="secondary-button" @click="loadCockpit">刷新数据</button>
+      <el-button :loading="loading" @click="loadCockpit">刷新数据</el-button>
     </div>
 
-    <section class="stats-grid">
-      <article class="stat-card">
-        <p class="stat-label">任务总数</p>
-        <strong class="stat-value">{{ projects.length }}</strong>
-      </article>
+    <el-row :gutter="16">
+      <el-col :xs="24" :md="8">
+        <el-card class="metric-card" shadow="never">
+          <p class="stat-label">任务总数</p>
+          <el-statistic :value="projects.length" />
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :md="8">
+        <el-card class="metric-card" shadow="never">
+          <p class="stat-label">过去 24 小时执行总次数</p>
+          <el-statistic :value="last24HoursReports.length" />
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :md="8">
+        <el-card class="metric-card" shadow="never">
+          <p class="stat-label">过去 24 小时重大变更</p>
+          <el-statistic
+            :value="last24HoursReports.filter((report) => report.job_status === 'CHANGED').length"
+          />
+        </el-card>
+      </el-col>
+    </el-row>
 
-      <article class="stat-card">
-        <p class="stat-label">过去 24 小时执行总次数</p>
-        <strong class="stat-value">{{ last24HoursReports.length }}</strong>
-      </article>
-
-      <article class="stat-card">
-        <p class="stat-label">过去 24 小时重大变更</p>
-        <strong class="stat-value">
-          {{ last24HoursReports.filter((report) => report.job_status === "CHANGED").length }}
-        </strong>
-      </article>
-    </section>
-
-    <section class="panel">
+    <el-card shadow="never">
       <div class="page-header">
         <div>
           <p class="page-kicker">重大变更</p>
@@ -84,24 +88,25 @@ onMounted(loadCockpit)
       </div>
 
       <div v-if="changedReports.length === 0" class="empty-panel">
-        <p class="empty-state">当前还没有可展示的重大变更记录。</p>
+        <el-empty description="当前还没有可展示的重大变更记录。" />
       </div>
 
       <div v-else class="card-grid">
-        <button
+        <el-card
           v-for="report in changedReports"
           :key="report.id"
-          class="change-card"
+          class="panel-card is-clickable"
+          shadow="hover"
           @click="router.push(`/monitoring/${report.id}`)"
         >
           <div class="change-card__top">
-            <span class="change-card__status">重大变更</span>
+            <el-tag effect="plain" round type="info">重大变更</el-tag>
             <span>{{ new Date(report.published_at).toLocaleString() }}</span>
           </div>
           <strong>{{ report.project_name }}</strong>
           <p>{{ report.change_summary }}</p>
-        </button>
+        </el-card>
       </div>
-    </section>
+    </el-card>
   </section>
 </template>

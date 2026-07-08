@@ -37,45 +37,35 @@ function save() {
 </script>
 
 <template>
-  <section class="panel">
+  <el-card shadow="never">
     <div class="page-header">
       <div>
         <p class="page-kicker">反馈评分</p>
         <h3>评分与评语</h3>
       </div>
-      <button type="button" class="ghost-button" :disabled="loading" @click="emit('clear')">
+      <el-button text :disabled="loading" @click="emit('clear')">
         清空评分
-      </button>
+      </el-button>
     </div>
 
-    <div class="rating-options">
-      <button
-        type="button"
-        class="secondary-button"
-        :class="{ active: feedback === 1 }"
-        @click="feedback = 1"
-      >
-        有帮助
-      </button>
-      <button
-        type="button"
-        class="secondary-button"
-        :class="{ active: feedback === -1 }"
-        @click="feedback = -1"
-      >
-        没帮助
-      </button>
-    </div>
+    <el-radio-group v-model="feedback" class="rating-options">
+      <el-radio-button :label="1">有帮助</el-radio-button>
+      <el-radio-button :label="-1">没帮助</el-radio-button>
+    </el-radio-group>
 
-    <label class="field field--wide">
-      <span>评语</span>
-      <textarea v-model="comment" rows="4" placeholder="这条报告为什么有帮助或没帮助？" />
-    </label>
+    <el-form label-position="top">
+      <el-form-item label="评语">
+        <el-input
+          v-model="comment"
+          type="textarea"
+          :rows="4"
+          placeholder="这条报告为什么有帮助或没帮助？"
+        />
+      </el-form-item>
+    </el-form>
 
     <div class="action-row">
-      <button type="button" class="primary-button" :disabled="loading" @click="save">
-        保存评分
-      </button>
+      <el-button type="primary" :disabled="loading" @click="save">保存评分</el-button>
     </div>
-  </section>
+  </el-card>
 </template>

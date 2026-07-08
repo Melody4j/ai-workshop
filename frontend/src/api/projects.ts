@@ -5,10 +5,19 @@ export interface CompetitorInput {
   url: string
 }
 
+export interface CompetitorContextInput {
+  title: string
+  url: string
+  supplement_doc_name: string
+  supplement_doc_content: string
+}
+
 export interface ProjectPayload {
   project_name: string
   competitor_urls: CompetitorInput[]
   self_product_doc: string
+  self_product_doc_name: string
+  competitor_contexts: CompetitorContextInput[]
   cron: string
   feishu_webhook: string
   is_active: boolean

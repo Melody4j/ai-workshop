@@ -11,6 +11,8 @@ class MonitorProjectSerializer(serializers.ModelSerializer):
             "project_name",
             "competitor_urls",
             "self_product_doc",
+            "self_product_doc_name",
+            "competitor_contexts",
             "cron",
             "feishu_webhook",
             "refined_rules",
@@ -31,6 +33,53 @@ class MonitorProjectSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Each competitor must include title and url.")
 
         return value
+
+    def validate_competitor_contexts(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("competitor_contexts must be a list.")
+
+        for item in value:
+            if not isinstance(item, dict):
+                raise serializers.ValidationError("Each competitor context must be an object.")
+            if not item.get("title") or not item.get("url"):
+                raise serializers.ValidationError(
+                    "Each competitor context must include title and url."
+                )
+            if "supplement_doc_name" in item and not isinstance(
+                item.get("supplement_doc_name", ""), str
+            ):
+                raise serializers.ValidationError(
+                    "supplement_doc_name must be a string when provided."
+                )
+            if "supplement_doc_content" in item and not isinstance(
+                item.get("supplement_doc_content", ""), str
+            ):
+                raise serializers.ValidationError(
+                    "supplement_doc_content must be a string when provided."
+                )
+
+        return value
+
+    def validate(self, attrs):
+        competitor_urls = attrs.get(
+            "competitor_urls",
+            getattr(self.instance, "competitor_urls", []),
+        )
+        competitor_contexts = attrs.get(
+            "competitor_contexts",
+            getattr(self.instance, "competitor_contexts", []),
+        )
+
+        if competitor_contexts and len(competitor_contexts) != len(competitor_urls):
+            raise serializers.ValidationError(
+                {
+                    "competitor_contexts": (
+                        "competitor_contexts must align with competitor_urls by item count."
+                    )
+                }
+            )
+
+        return attrs
 
 
 class IntelligenceFeedListSerializer(serializers.ModelSerializer):

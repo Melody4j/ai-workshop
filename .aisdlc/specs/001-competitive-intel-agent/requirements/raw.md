@@ -222,8 +222,8 @@
 
 #### 部署形态定稿（关闭 V-013）
 
-- 部署形态：**Django 单体应用**（Django Admin 后台 + 独立 HTML 消费页 + 飞书卡片）。
-- 技术栈：Python 3.10+ / Django 4.2+ / SQLite 3 (WAL) / httpx + Playwright(可选) / html2text / instructor+Pydantic / Jinja2 / django-apscheduler / 飞书群机器人 API。
+- 部署形态：**前后端分离的单体项目**（Vue 前端 + Django API/调度后端 + 飞书卡片）。
+- 技术栈：Python 3.10+ / Django 4.2+ / SQLite 3 (WAL) / httpx + Playwright(可选) / html2text / instructor+Pydantic / Vue 3 / django-apscheduler / 飞书群机器人 API / Jinja2（仅可选用于离线 HTML 报告产物，不承担产品页面渲染）。
 - V-013 关闭；V-014 关闭（技术架构已由用户给出）。
 
 ### R1-修订：数据库设计审查裁决（4 项）
@@ -243,10 +243,24 @@
 #### DB-3：NO_CHANGE 进 IntelligenceFeed（不独立 JobLog）
 
 - 裁决：**`NO_CHANGE` 记录写入 `IntelligenceFeed` 表**，不独立建 JobLog 表。熔断记录与情报记录同表，通过 `job_status` 区分。
-- 影响：收件箱/报告浏览需按 `job_status` 过滤（只展示 `CHANGED`）；`NO_CHANGE`/`ERROR_CRAWL` 记录仅在 Django Admin 调度日志中展示。
+- 影响：收件箱按 `job_status=CHANGED` 过滤；新增 Vue「调度执行列表」展示 `CHANGED` / `NO_CHANGE` / `ERROR_CRAWL` 全量执行记录。
 
 #### DB-4：competitor_urls 改 JSON + refined_rules 保留（裁决）
 
 - 裁决-4a：`competitor_urls` 从 TEXT（换行分隔）改为 **JSON 数组**，对象格式：`{"url": "链接", "title": "链接说明，作为每段网页爬取的数据标题"}`。每个 URL 携带 title 标题，可标识来源，解决 A3（快照缺信号源标识）与 C1（竞品与信号源混淆）。
 - 裁决-4b：`refined_rules` 字段**保留**，属于后续评分反馈机制，MVP 先占位不实现周级提炼调度。
 - 影响：competitor_urls 数据结构变更；DataSnapshot 的 raw_markdown/clean_markdown 可按 title 标注每段内容来源；refined_rules 列为 P1 功能占位，MVP 不写入。
+
+### R1-修订：前端架构调整裁决（新增）
+
+> 背景：用户要求按“前后端分离的单体项目”重做 001 方案，前端统一改为 Vue，并明确任务配置、调度执行列表也要进入前端产品界面。
+
+#### 修订-6：产品前端统一改为 Vue（推翻原 UI 入口约束）
+
+- 新裁决：**产品功能层面的前端页面全部改为 Vue**，包括任务配置页、调度执行列表、收件箱、情报详情、报告预览；Django Admin 不再作为产品主入口。
+- 理由：用户明确要求前端采用 Vue，并采用前后端分离的单体项目开发方式；任务配置与调度执行列表也需要产品化前端体验，而非后台管理页。
+- 影响更新：
+  1. `solution.md`、`prd.md`、`prototype.md` 中所有 Django Admin / 独立 HTML 产品入口改为 Vue 页面。
+  2. Django 后端职责收敛为 API、调度、采集、LLM 编排、报告产物生成、飞书推送。
+  3. 收件箱仍只展示 `CHANGED`，但 `NO_CHANGE` / `ERROR_CRAWL` 改由 Vue 调度执行列表展示，而非仅 Django Admin 可见。
+  4. Jinja2 若保留，仅用于离线 HTML 报告产物生成；不再承担产品页面渲染。

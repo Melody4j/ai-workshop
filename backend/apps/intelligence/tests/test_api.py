@@ -14,6 +14,21 @@ class ProjectApiTests(APITestCase):
                 {"title": "v0", "url": "https://v0.dev"},
             ],
             "self_product_doc": "We help teams observe AI product changes.",
+            "self_product_doc_name": "self-product.md",
+            "competitor_contexts": [
+                {
+                    "title": "Lovable",
+                    "url": "https://lovable.dev",
+                    "supplement_doc_name": "lovable-notes.md",
+                    "supplement_doc_content": "Focus on fast landing pages and prompt-to-app flow.",
+                },
+                {
+                    "title": "v0",
+                    "url": "https://v0.dev",
+                    "supplement_doc_name": "",
+                    "supplement_doc_content": "",
+                },
+            ],
             "cron": "0 9 * * *",
             "feishu_webhook": "https://example.com/webhook",
             "is_active": True,
@@ -24,6 +39,11 @@ class ProjectApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(MonitorProject.objects.count(), 1)
         self.assertEqual(response.data["competitor_urls"][0]["title"], "Lovable")
+        self.assertEqual(response.data["self_product_doc_name"], "self-product.md")
+        self.assertEqual(
+            response.data["competitor_contexts"][0]["supplement_doc_name"],
+            "lovable-notes.md",
+        )
 
     def test_delete_project_marks_it_inactive(self) -> None:
         project = MonitorProject.objects.create(

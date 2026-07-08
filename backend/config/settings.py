@@ -87,3 +87,42 @@ REST_FRAMEWORK = {
 
 # django-apscheduler 配置
 APSCHEDULER_RUN_NOW_TIMEOUT = 25  # seconds
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "[{asctime}] {levelname} {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+            "level": "INFO",
+        },
+    },
+    "loggers": {
+        "apps.intelligence": {
+            "level": "INFO",
+            "handlers": ["console"],
+            "propagate": False,
+        },
+        "apscheduler": {
+            "level": "INFO",
+            "handlers": ["console"],
+            "propagate": False,
+        },
+        "django_apscheduler": {
+            "level": "INFO",
+            "handlers": ["console"],
+            "propagate": False,
+        },
+    },
+    "root": {
+        "level": "WARNING",
+        "handlers": ["console"],
+    },
+}

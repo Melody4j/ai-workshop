@@ -282,3 +282,104 @@ class FeedHtmlPreviewViewTest(APITestCase):
         response = self.client.get("/view/html/99999")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class FeedOptimizePromptViewTest(APITestCase):
+    """Prompt 优化 API 测试"""
+
+    def setUp(self) -> None:
+        self.project = MonitorProject.objects.create(
+            project_name="测试项目",
+            competitor_urls=[{"url": "https://example.com", "title": "Example"}],
+            cron="0 9 * * *",
+            is_active=True,
+            self_product_doc="我方产品文档",
+        )
+        self.feed = IntelligenceFeed.objects.create(
+            project=self.project,
+            job_status=IntelligenceFeed.JobStatus.CHANGED,
+            change_summary="变化摘要",
+            strategic_intent="战略意图",
+            action_suggestion="行动建议",
+            evidence_diff="证据diff",
+            diff_text="diff内容",
+            user_feedback=-1,
+            user_comment="分析太笼统",
+        )
+
+    def test_optimize_prompt_endpoint(self) -> None:
+        """POST /api/feeds/{id}/optimize_prompt → 200 + 优化结果摘要"""
+        with patch("apps.intelligence.services.prompt_optimizer_service.get_instructor_client") as mock_client_fn:
+            mock_client = MagicMock()
+            mock_client_fn.return_value = mock_client
+            mock_client.chat.completions.create.return_value = MagicMock(
+                intel_system="优化后的system prompt" + "x" * 50,
+                intel_user="优化后的user prompt" + "x" * 50,
+            )
+
+            response = self.client.post(
+                reverse("feed-optimize-prompt", kwargs={"pk": self.feed.pk})
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("intel_system_version", response.data)
+        self.assertIn("intel_user_version", response.data)
+
+    def test_optimize_prompt_feed_not_found(self) -> None:
+        """不存在的 feed_id → 404"""
+        response = self.client.post(
+            reverse("feed-optimize-prompt", kwargs={"pk": 99999})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class ReportRatingOptimizeTriggerTest(APITestCase):
+    """评分=-1 异步触发 Prompt 优化测试"""
+
+    def setUp(self) -> None:
+        self.project = MonitorProject.objects.create(
+            project_name="测试项目",
+            competitor_urls=[{"url": "https://example.com", "title": "Example"}],
+            cron="0 9 * * *",
+            self_product_doc="我方产品文档",
+        )
+        self.feed = IntelligenceFeed.objects.create(
+            project=self.project,
+            job_status=IntelligenceFeed.JobStatus.CHANGED,
+            change_summary="变化摘要",
+            strategic_intent="战略意图",
+            action_suggestion="行动建议",
+            evidence_diff="证据diff",
+            diff_text="diff内容",
+        )
+
+    @patch("apps.intelligence.views._async_optimize_prompts")
+    def test_rating_minus1_triggers_optimization(self, mock_async) -> None:
+        """评分=-1 → 启动 threading 执行 optimize_prompts"""
+        response = self.client.post(
+            reverse("report-rating", kwargs={"pk": self.feed.pk}),
+            {"user_feedback": -1, "user_comment": "分析太笼统"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.feed.refresh_from_db()
+        self.assertEqual(self.feed.user_feedback, -1)
+        # _async_optimize_prompts 被调用（threading target）
+        mock_async.assert_called_once_with(self.feed.pk)
+
+    @patch("apps.intelligence.views._async_optimize_prompts")
+    def test_rating_plus1_does_not_trigger(self, mock_async) -> None:
+        """评分=1 → 不触发优化"""
+        response = self.client.post(
+            reverse("report-rating", kwargs={"pk": self.feed.pk}),
+            {"user_feedback": 1, "user_comment": "很有帮助"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.feed.refresh_from_db()
+        self.assertEqual(self.feed.user_feedback, 1)
+        # _async_optimize_prompts 未被调用
+        mock_async.assert_not_called()

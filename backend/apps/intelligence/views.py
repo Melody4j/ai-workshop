@@ -1,4 +1,6 @@
+import logging
 import os
+import threading
 
 from django.db.models import QuerySet
 from django.http import FileResponse, Http404, HttpResponse
@@ -15,6 +17,17 @@ from .serializers import (
     ReportRatingSerializer,
 )
 from .services import feishu_service
+
+logger = logging.getLogger(__name__)
+
+
+def _async_optimize_prompts(feed_id: int) -> None:
+    """在后台线程中执行 prompt 优化，异常仅记录日志。"""
+    try:
+        from .services.prompt_optimizer_service import optimize_prompts
+        optimize_prompts(feed_id)
+    except Exception as e:
+        logger.error(f"[Prompt优化] feed={feed_id} 异步优化失败: {e}", exc_info=True)
 
 
 class ProjectListCreateView(generics.ListCreateAPIView):
@@ -76,6 +89,16 @@ class ReportRatingView(APIView):
         serializer = ReportRatingSerializer(feed, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
+        # 评分=-1 时异步触发 prompt 优化
+        if feed.user_feedback == -1:
+            thread = threading.Thread(
+                target=_async_optimize_prompts,
+                args=(feed.pk,),
+                daemon=True,
+            )
+            thread.start()
+
         return Response(IntelligenceFeedDetailSerializer(feed).data, status=status.HTTP_200_OK)
 
     def patch(self, request, pk: int) -> Response:
@@ -165,3 +188,24 @@ class FeedHtmlPreviewView(APIView):
             content = f.read()
 
         return HttpResponse(content, content_type="text/html; charset=utf-8")
+
+
+class FeedOptimizePromptView(APIView):
+    """手动触发 Prompt 优化。
+
+    POST /api/feeds/{id}/optimize_prompt
+    同步调用 prompt_optimizer_service.optimize_prompts，返回优化结果摘要。
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request, pk: int) -> Response:
+        try:
+            feed = IntelligenceFeed.objects.get(pk=pk)
+        except IntelligenceFeed.DoesNotExist:
+            raise Http404
+
+        from .services.prompt_optimizer_service import optimize_prompts
+
+        result = optimize_prompts(pk)
+        return Response(result, status=status.HTTP_200_OK)

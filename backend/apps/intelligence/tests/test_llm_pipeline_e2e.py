@@ -48,6 +48,10 @@ class LLMPipelineE2ETest(TestCase):
         self.mock_render_md = patch("apps.intelligence.services.scheduler_service.report_service.render_md").start()
         self.mock_render_md.return_value = "/tmp/e2e_report.md"
 
+        # Mock 飞书推送
+        self.mock_push = patch("apps.intelligence.services.scheduler_service.feishu_service.push_intelligence").start()
+        self.mock_push.return_value = "pushed"
+
     def tearDown(self):
         patch.stopall()
         if self.storage_dir.exists():

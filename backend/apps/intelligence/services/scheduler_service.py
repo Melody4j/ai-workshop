@@ -1,4 +1,4 @@
-"""调度服务：全局扫描 → 采集 → LLM 降噪 → diff 熔断 → 情报生成 → 入库+报告。
+"""调度服务：全局扫描 → 采集 → LLM 降噪 → diff 熔断 → 情报生成 → 入库+报告+飞书推送。
 
 核心链路（每 URL）：
 1. 采集（httpx + BS 去噪）
@@ -8,7 +8,7 @@
 5. 文本 diff 为空 → 熔断 NO_CHANGE
 6. LLM diff 判断（第 2 次 LLM 调用）→ 无意义 → 熔断 NO_CHANGE
 7. LLM 情报生成（第 3 次 LLM 调用，instructor + Pydantic）
-8. 写 IntelligenceFeed(CHANGED) + Jinja2 报告落盘
+8. 写 IntelligenceFeed(CHANGED) + Jinja2 报告落盘 + 飞书推送
 """
 
 import logging
@@ -19,6 +19,7 @@ from django.utils import timezone
 from apps.intelligence.models import MonitorProject, DataSnapshot, IntelligenceFeed
 from apps.intelligence.services import crawler_service
 from apps.intelligence.services import diff_service
+from apps.intelligence.services import feishu_service
 from apps.intelligence.services import file_storage
 from apps.intelligence.services import llm_service
 from apps.intelligence.services import report_service
@@ -231,3 +232,10 @@ def _process_url(project, url, title, now):
         logger.info(f"[报告落盘] {url} → HTML: {html_path}, MD: {md_path}")
     except Exception as e:
         logger.error(f"[报告渲染失败] {url} - {e}", exc_info=True)
+
+    # === Step 11: 飞书推送 ===
+    try:
+        result = feishu_service.push_intelligence(feed.id)
+        logger.info(f"[飞书推送] {url} → feed {feed.id} 结果: {result}")
+    except Exception as e:
+        logger.error(f"[飞书推送异常] {url} → feed {feed.id} - {e}", exc_info=True)

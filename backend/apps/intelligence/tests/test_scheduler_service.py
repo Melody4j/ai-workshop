@@ -58,6 +58,12 @@ class SchedulerServiceTest(TestCase):
         ).start()
         self.mock_render_md.return_value = "/tmp/test_report.md"
 
+        # Mock 飞书推送
+        self.mock_push = patch(
+            "apps.intelligence.services.scheduler_service.feishu_service.push_intelligence"
+        ).start()
+        self.mock_push.return_value = "pushed"
+
     def tearDown(self):
         patch.stopall()
         if self.storage_dir.exists():
@@ -479,3 +485,65 @@ class SchedulerServiceTest(TestCase):
         )
         self.assertEqual(error_feeds.count(), 1)
         self.assertIn("LLM diff 判断失败", error_feeds.first().change_summary)
+
+    # === 飞书推送集成测试 ===
+
+    @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
+    def test_run_scan_changed_feed_triggers_feishu_push(self, mock_fetch):
+        """CHANGED feed → 飞书推送被调用。"""
+        mock_fetch.return_value = ("<html></html>", "line1\nline2\nline3")
+        project = self._create_project(next_run_at=timezone.now() - timedelta(minutes=1))
+        scheduler_service.run_scan()
+        # 2 个 CHANGED feed → 飞书推送调用 2 次
+        self.assertEqual(self.mock_push.call_count, 2)
+
+    @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
+    def test_run_scan_no_change_feed_does_not_push(self, mock_fetch):
+        """NO_CHANGE feed → 飞书推送不被调用。"""
+        from apps.intelligence.services import file_storage
+
+        mock_fetch.return_value = ("<html></html>", "line1\nline2\nline3")
+        project = self._create_project(
+            competitor_urls=[{"url": "https://example.com", "title": "Example"}],
+            next_run_at=timezone.now() - timedelta(minutes=1),
+        )
+
+        # 创建上一条快照（相同内容 → diff 为空 → NO_CHANGE）
+        now = timezone.now()
+        prev_path = file_storage.save_llm_clean_md(
+            project.id, "https://example.com", "llm_clean_md_content", now
+        )
+        DataSnapshot.objects.create(
+            project=project,
+            source_url="https://example.com",
+            source_title="Example",
+            raw_html_path="/tmp/prev.html",
+            clean_md_path=prev_path,
+            fetch_time=now - timedelta(hours=1),
+        )
+
+        scheduler_service.run_scan()
+        # NO_CHANGE → 飞书推送不被调用
+        self.mock_push.assert_not_called()
+
+    @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
+    def test_run_scan_error_crawl_feed_does_not_push(self, mock_fetch):
+        """ERROR_CRAWL feed → 飞书推送不被调用。"""
+        mock_fetch.return_value = ("", "")
+        project = self._create_project(next_run_at=timezone.now() - timedelta(minutes=1))
+        scheduler_service.run_scan()
+        # 采集失败 → ERROR_CRAWL → 飞书推送不被调用
+        self.mock_push.assert_not_called()
+
+    @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
+    def test_run_scan_feishu_push_failure_does_not_break_flow(self, mock_fetch):
+        """飞书推送异常不中断主流程。"""
+        mock_fetch.return_value = ("<html></html>", "line1\nline2\nline3")
+        self.mock_push.side_effect = Exception("飞书 API 超时")
+        project = self._create_project(next_run_at=timezone.now() - timedelta(minutes=1))
+        scheduler_service.run_scan()
+        # 推送异常不影响 feed 创建
+        feeds = IntelligenceFeed.objects.filter(project=project)
+        self.assertEqual(feeds.count(), 2)
+        for feed in feeds:
+            self.assertEqual(feed.job_status, IntelligenceFeed.JobStatus.CHANGED)

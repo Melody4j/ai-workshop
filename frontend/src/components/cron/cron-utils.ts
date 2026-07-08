@@ -1,5 +1,5 @@
 import cronstrue from "cronstrue"
-import cronParser from "cron-parser"
+import { CronExpressionParser } from "cron-parser"
 import "cronstrue/locales/zh_CN"
 
 export type Unit = "second" | "minute" | "hour" | "day" | "month" | "week"
@@ -280,7 +280,7 @@ function convertSingleWeekCrontabToQuartz(val: string): string {
 export function getNextRuns(crontab: string, count = 5): string[] {
   if (!crontab) return []
   try {
-    const interval = cronParser.parseExpression(crontab, { currentDate: new Date() })
+    const interval = CronExpressionParser.parse(crontab, { currentDate: new Date() })
     const results: string[] = []
     for (let i = 0; i < count; i++) {
       const next = interval.next()

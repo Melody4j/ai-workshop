@@ -547,3 +547,27 @@ class SchedulerServiceTest(TestCase):
         self.assertEqual(feeds.count(), 2)
         for feed in feeds:
             self.assertEqual(feed.job_status, IntelligenceFeed.JobStatus.CHANGED)
+
+    @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
+    def test_run_scan_passes_crawl_hint_to_fetch_and_clean(self, mock_fetch):
+        """competitor_urls 含 crawl_hint 时传递给 fetch_and_clean。"""
+        mock_fetch.return_value = ("<html></html>", "line1\nline2\nline3")
+        project = self._create_project(
+            next_run_at=timezone.now() - timedelta(minutes=1),
+            competitor_urls=[
+                {"url": "https://example.com", "title": "Example", "crawl_hint": "爬取定价页"},
+                {"url": "https://test.com", "title": "Test"},  # 无 crawl_hint
+            ],
+        )
+        scheduler_service.run_scan()
+
+        # fetch_and_clean 被调用 2 次
+        self.assertEqual(mock_fetch.call_count, 2)
+        # 第一次调用带 crawl_hint
+        first_call = mock_fetch.call_args_list[0]
+        self.assertEqual(first_call[0][0], "https://example.com")
+        self.assertEqual(first_call[0][1], "爬取定价页")
+        # 第二次调用 crawl_hint 为空字符串
+        second_call = mock_fetch.call_args_list[1]
+        self.assertEqual(second_call[0][0], "https://test.com")
+        self.assertEqual(second_call[0][1], "")

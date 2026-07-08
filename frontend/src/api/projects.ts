@@ -3,6 +3,7 @@ import { deleteJson, getJson, patchJson, postJson } from "./client"
 export interface CompetitorInput {
   title: string
   url: string
+  crawl_hint?: string
 }
 
 export interface CompetitorContextInput {

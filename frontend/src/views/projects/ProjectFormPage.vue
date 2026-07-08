@@ -17,7 +17,7 @@ const loading = ref(false)
 
 const emptyProject: ProjectPayload = {
   project_name: "",
-  competitor_urls: [{ title: "", url: "" }],
+  competitor_urls: [{ title: "", url: "", crawl_hint: "" }],
   self_product_doc: "",
   self_product_doc_name: "",
   competitor_contexts: [
@@ -36,7 +36,7 @@ async function loadProject() {
   if (!isEdit.value) {
     formValue.value = {
       ...emptyProject,
-      competitor_urls: [{ title: "", url: "" }],
+      competitor_urls: [{ title: "", url: "", crawl_hint: "" }],
       competitor_contexts: [
         { title: "", url: "", supplement_doc_name: "", supplement_doc_content: "" },
       ],

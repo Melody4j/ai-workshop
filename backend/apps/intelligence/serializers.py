@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from croniter import croniter
+
 from .models import IntelligenceFeed, MonitorProject
 
 
@@ -17,10 +19,20 @@ class MonitorProjectSerializer(serializers.ModelSerializer):
             "feishu_webhook",
             "refined_rules",
             "is_active",
+            "next_run_at",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "refined_rules"]
+        read_only_fields = ["id", "created_at", "updated_at", "refined_rules", "next_run_at"]
+
+    def validate_cron(self, value):
+        if not croniter.is_valid(value):
+            raise serializers.ValidationError(
+                f"Invalid cron expression: '{value}'. "
+                "Use standard 5-field cron (minute hour day month weekday). "
+                "Hour range is 0-23, not 0-24."
+            )
+        return value
 
     def validate_competitor_urls(self, value):
         if not isinstance(value, list):

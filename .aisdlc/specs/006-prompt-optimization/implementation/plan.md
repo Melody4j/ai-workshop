@@ -106,7 +106,7 @@ status: draft
 
 ### Task T1: 模型变更 — IntelligenceFeed.diff_text + PromptVersion + migration
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（commit `5bfec6e`）
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/`
@@ -168,7 +168,7 @@ status: draft
 
 ### Task T2: prompt_loader.save_prompt() 写回文件能力
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（commit `7385b27`）
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`
@@ -216,7 +216,7 @@ status: draft
 
 ### Task T3: OptimizedPrompts Pydantic schema + prompt_optimizer.md meta-prompt 模板
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（commit `e72214b`）
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/llm_client.py` + `backend/prompts/`
@@ -266,7 +266,7 @@ status: draft
 
 ### Task T4: prompt_optimizer_service.py 优化服务函数
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（commit `e3b84f6`）
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`
@@ -329,7 +329,7 @@ status: draft
 
 ### Task T5: scheduler_service._process_url 存 diff_text
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（commit `5091f31`）
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/services/`
@@ -377,7 +377,7 @@ status: draft
 
 ### Task T6: API 端点 + ReportRatingView 评分触发
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（commit `3efa062`, fix `368d13d`）
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/views.py` + `urls.py`
@@ -433,7 +433,7 @@ status: draft
 
 ### Task T7: Django Admin 注册 PromptVersion
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（commit `5520235`）
 
 **代码仓范围：**
 - 根项目：`backend/apps/intelligence/admin.py`
@@ -475,7 +475,7 @@ status: draft
 
 ### Task T8: 全量验证
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（122 tests OK / Django check no issues / frontend build success）
 
 **代码仓范围：**
 - 根项目

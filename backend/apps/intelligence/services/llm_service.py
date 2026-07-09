@@ -138,7 +138,9 @@ def _format_few_shots(few_shots: list) -> str:
     parts = []
     for idx, feed in enumerate(few_shots, 1):
         parts.append(f"### 反面案例 {idx}")
-        parts.append(f"- 摘要：{feed.change_summary}")
+        parts.append(f"- 变化摘要：{feed.change_summary}")
+        parts.append(f"- 战略意图：{feed.strategic_intent or '无'}")
+        parts.append(f"- 行动建议：{feed.action_suggestion or '无'}")
         parts.append(f"- 用户评语（为何无意义）：{feed.user_comment or '无评语'}")
         parts.append("")
 
@@ -151,6 +153,7 @@ def generate_intel(
     self_product_doc: str,
     few_shots: list,
     competitor_context: str = "",
+    page_content: str = "",
 ) -> IntelResult:
     """LLM 情报生成：instructor + Pydantic 结构化输出 5 字段。
 
@@ -159,6 +162,7 @@ def generate_intel(
         self_product_doc: 我方产品锚定文档
         few_shots: Negative Few-Shot 列表（IntelligenceFeed 对象列表）
         competitor_context: 竞品补充文档文本（已格式化）
+        page_content: 竞品页面内容（LLM 降噪后 MD），用于竞品概述
 
     Returns:
         IntelResult 实例（5 字段：competitor_overview / change_summary / strategic_intent / action_suggestion / evidence_diff）
@@ -169,11 +173,13 @@ def generate_intel(
     doc_context = self_product_doc if self_product_doc and self_product_doc.strip() else "（暂无产品锚定文档）"
     few_shots_text = _format_few_shots(few_shots)
     ctx = competitor_context if competitor_context and competitor_context.strip() else "暂无竞品补充文档"
+    page_ctx = page_content if page_content and page_content.strip() else "暂无竞品页面内容"
 
     system_prompt = load_prompt("intel_system", self_product_doc=doc_context)
     user_prompt = load_prompt(
         "intel_user",
         diff_text=diff_text,
+        page_content=page_ctx,
         negative_few_shots=few_shots_text,
         competitor_context=ctx,
     )

@@ -306,6 +306,7 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
             self_product_doc=project.self_product_doc,
             few_shots=few_shots,
             competitor_context=competitor_context,
+            page_content=llm_clean_md,
         )
     except Exception as e:
         logger.error(f"[LLM情报生成失败] {url} - {e}", exc_info=True)

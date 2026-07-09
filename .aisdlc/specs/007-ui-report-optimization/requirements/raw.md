@@ -15,3 +15,39 @@
 ## 需求 4：优化 HTML 报告模板排版
 
 生成的 HTML 报告页面排版不够精美，内容太空泛，需要重新设计排版并优化 HTML 模板，使报告更美观、信息密度更高。
+
+## 澄清记录
+
+### R1-Q1：HTML 报告模板视觉风格方向
+
+- 本轮结论：选择**商务报告风**——正式简洁的咨询报告风格，左色边+分级标题，注重排版留白和专业感，适合汇报场景
+- 本轮约束：
+  1. 报告整体风格对标咨询/分析报告，注重专业感和可读性
+  2. 使用左色边+分级标题的视觉层次结构
+  3. 注重排版留白，避免信息过于密集或过于空泛
+  4. 适合正式汇报场景使用
+
+### R1-Q2：启用/停用任务的 API 方案
+
+- 本轮结论：选择**PATCH 统一切换**——卡片上一个开关按钮，启/停都调 `PATCH /api/projects/{id} {is_active: true/false}`，不再用 DELETE 软删除
+- 本轮约束：
+  1. 前端卡片用单一切换按钮（开关或按钮），不再用 DELETE 停用
+  2. 启停统一走 PATCH /api/projects/{id}，body 含 `is_active` 布尔值
+  3. 后端 ProjectDetailView 需支持 PATCH 更新 is_active（当前已有 PATCH 逻辑，需确认 is_active 在允许字段中）
+
+### R1-Q3：HTML 报告在线预览的展示方式
+
+- 本轮结论：选择**内嵌+新窗口**——详情页内用 iframe 嵌入后端 `/api/feeds/{id}/preview_html`，同时提供"在新窗口打开"按钮跳转 `/view/html/{id}`
+- 本轮约束：
+  1. 详情页内嵌入 iframe 预览 HTML 报告，src 指向 `/api/feeds/{id}/preview_html`
+  2. 同时提供"新窗口打开"按钮，链接到 `/view/html/{id}`
+  3. iframe 需有合理高度（如 600px 或自适应），支持滚动
+  4. 仅 CHANGED 状态的 feed 有 HTML 报告，非 CHANGED 时不展示预览区
+
+### R1-Q4：MD 下载方式
+
+- 本轮结论：选择**后端端点下载**——"下载 MD"按钮改为调用后端 `/api/feeds/{id}/download_md`，下载 Jinja2 渲染的实际 MD 文件
+- 本轮约束：
+  1. 前端"下载 MD"按钮改为调用 `GET /api/feeds/{id}/download_md`，以 Blob 下载
+  2. 不再前端拼接 4 字段构造 MD 内容
+  3. 下载的文件名从后端 Content-Disposition 获取（或前端默认 `{feed_id}.md`）

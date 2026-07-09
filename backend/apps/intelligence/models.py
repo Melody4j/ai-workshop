@@ -87,6 +87,7 @@ class IntelligenceFeed(TimestampedModel):
         choices=PushStatus.choices,
         default=PushStatus.NOT_PUSHED,
     )
+    competitor_overview = models.TextField(blank=True, default="")
     change_summary = models.TextField(blank=True)
     strategic_intent = models.TextField(blank=True)
     action_suggestion = models.TextField(blank=True)

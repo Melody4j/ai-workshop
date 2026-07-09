@@ -12,6 +12,8 @@
 - Django check：`/Users/melody/code/ai-workshop/.venv/bin/python backend/manage.py check`
 - 后端测试（当前可靠入口）：`/Users/melody/code/ai-workshop/.venv/bin/python backend/manage.py test apps.intelligence.tests`
 - 后端测试（排除 E2E 网络测试）：`/Users/melody/code/ai-workshop/.venv/bin/python backend/manage.py test apps.intelligence.tests --exclude-tag=e2e`
+- 稳定 diff 回归：`/Users/melody/code/ai-workshop/.venv/bin/python backend/manage.py test apps.intelligence.tests.test_diff_service apps.intelligence.tests.test_scheduler_service apps.intelligence.tests.test_llm_pipeline_e2e`
+- 真实夹具报告链路（Firecrawl + LLM + Vercel Blob + 外部 PG）：`RUN_FIXTURE_REPORT_E2E=1 /Users/melody/code/ai-workshop/.venv/bin/python backend/manage.py test apps.intelligence.tests.test_fixture_report_flow_e2e -v 2 --keepdb --noinput`
 - 前端构建：`npm --prefix frontend run build`
 
 ## Dependencies
@@ -40,10 +42,12 @@
 - 回滚操作：从 PromptVersion 记录复制 content 回对应 prompt 文件（手动操作）
 - 优化失败处理：threading 内 try-except 捕获，logger.error 记录，不影响评分保存
 
-## LLM 配置
+## 环境与 LLM 配置
 
 - 配置文件：`backend/.env`（gitignored，不入库）
+- 数据库配置：`backend/.env` 中的 `DATABASE_URL`；当前真实集成验证使用外部 Vercel PG，不切回 SQLite
 - 配置项：`LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` / `LLM_TEMPERATURE` / `LLM_MAX_TOKENS`
+- 真实夹具报告链路额外依赖：`FIRECRAWL_API_KEY` / `BLOB_READ_WRITE_TOKEN`
 - 读取入口：`backend/config/settings.py`（从 `os.environ` 读取）
 - LLM 服务：`backend/apps/intelligence/services/llm_service.py`（3 次情报链路调用 + 1 次 prompt 优化调用）
 - 重试机制：3 次 / 30s 间隔（`backend/apps/intelligence/services/retry.py`）
@@ -69,6 +73,7 @@
 - [backend/apps/intelligence/tests/test_feishu_service.py](../../../backend/apps/intelligence/tests/test_feishu_service.py)
 - [backend/apps/intelligence/tests/test_prompt_optimizer_service.py](../../../backend/apps/intelligence/tests/test_prompt_optimizer_service.py)
 - [backend/apps/intelligence/tests/test_llm_pipeline_e2e.py](../../../backend/apps/intelligence/tests/test_llm_pipeline_e2e.py)
+- [backend/apps/intelligence/tests/test_fixture_report_flow_e2e.py](../../../backend/apps/intelligence/tests/test_fixture_report_flow_e2e.py)
 - [backend/apps/intelligence/tests/test_llm_service.py](../../../backend/apps/intelligence/tests/test_llm_service.py)
 - [verification/report-2026-07-08-unknown.md](../../specs/001-competitive-intel-agent/verification/report-2026-07-08-unknown.md)
 
@@ -80,4 +85,3 @@
   - 影响：ops 目前仅能覆盖本地开发与最小验证
 - 缺口：生产环境 scheduler 启动方案未落地
   - 影响：MVP 阶段仅支持 runserver 本地开发；生产部署需另行处理 scheduler 启动与多 worker 互斥
-

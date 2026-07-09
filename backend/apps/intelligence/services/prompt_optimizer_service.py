@@ -5,7 +5,6 @@
 """
 
 import logging
-from pathlib import Path
 
 from django.conf import settings
 
@@ -36,14 +35,15 @@ def optimize_prompts(feed_id: int) -> dict:
     # 2. 收集上下文
     diff_text = feed.diff_text or ""
 
-    # 读取 clean_md（从最新快照）
+    # 读取 clean_md（从最新快照的 Blob URL）
     clean_md = ""
     snapshot = DataSnapshot.objects.filter(
         project=feed.project_id,
     ).order_by("-fetch_time", "-id").first()
     if snapshot and snapshot.clean_md_path:
         try:
-            clean_md = Path(snapshot.clean_md_path).read_text(encoding="utf-8")
+            from . import blob_storage
+            clean_md = blob_storage.read_content(snapshot.clean_md_path)
         except Exception as e:
             logger.warning(f"[Prompt优化] 读取 clean_md 失败: {e}")
 
@@ -118,12 +118,11 @@ def optimize_prompts(feed_id: int) -> dict:
 
 
 def _read_prompt_file(name: str) -> str:
-    """读取 prompt 模板文件原始内容（不注入变量）。"""
-    from .prompt_loader import PROMPTS_DIR
-    file_path = PROMPTS_DIR / f"{name}.md"
-    if not file_path.exists():
-        raise FileNotFoundError(f"Prompt 模板文件不存在: {file_path}")
-    return file_path.read_text(encoding="utf-8")
+    """读取 prompt 模板文件原始内容（从 Blob 读取，不注入变量）。"""
+    from .prompt_loader import _get_blob_url
+    from . import blob_storage
+    pathname = f"prompts/{name}.md"
+    return blob_storage.read_content(_get_blob_url(pathname))
 
 
 def _create_version(prompt_name: str, content: str, feed: IntelligenceFeed, reason: str) -> int:

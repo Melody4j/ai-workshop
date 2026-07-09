@@ -2,13 +2,13 @@
 import shutil
 from datetime import timedelta
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.intelligence.models import MonitorProject, DataSnapshot, IntelligenceFeed
-from apps.intelligence.services import scheduler_service
+from apps.intelligence.services import scheduler_service, file_storage
 from apps.intelligence.services.llm_client import IntelResult
 
 
@@ -89,6 +89,40 @@ class SchedulerServiceTest(TestCase):
             )
             project.refresh_from_db()
         return project
+
+    def _create_prev_snapshot(
+        self,
+        project,
+        *,
+        raw_md="line1\nline2\nline3",
+        llm_md="llm_clean_md_content",
+        url="https://example.com",
+        title="Example",
+        fetch_time=None,
+        legacy=False,
+        include_raw_md=True,
+    ):
+        """创建上一条快照，支持稳定 diff 所需字段和旧格式兼容场景。"""
+        fetch_time = fetch_time or timezone.now()
+        raw_md_path = (
+            file_storage.save_clean_md(project.id, url, raw_md, fetch_time)
+            if include_raw_md
+            else ""
+        )
+        if legacy:
+            clean_md_path = file_storage.save_clean_md(project.id, url, llm_md, fetch_time)
+        else:
+            clean_md_path = file_storage.save_llm_clean_md(project.id, url, llm_md, fetch_time)
+
+        return DataSnapshot.objects.create(
+            project=project,
+            source_url=url,
+            source_title=title,
+            raw_html_path="/tmp/prev.html",
+            clean_md_path=clean_md_path,
+            raw_md_path=raw_md_path,
+            fetch_time=fetch_time,
+        )
 
     # === 基础调度测试 ===
 
@@ -293,50 +327,72 @@ class SchedulerServiceTest(TestCase):
             self.assertEqual(feed.md_table_path, "/tmp/test_report.md")
 
     @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
-    def test_run_scan_text_diff_empty_no_change(self, mock_fetch):
-        """有历史快照 + 文本 diff 为空 → NO_CHANGE（零 LLM diff 调用）。"""
-        from apps.intelligence.services import file_storage
-
+    def test_run_scan_raw_diff_empty_no_change(self, mock_fetch):
+        """有历史快照 + raw_diff_text 为空 → NO_CHANGE（零后续 LLM 调用）。"""
         mock_fetch.return_value = ("<html></html>", "line1\nline2\nline3")
+        self.mock_denoise.return_value = "new_llm_md_content_different"
         project = self._create_project(
             competitor_urls=[{"url": "https://example.com", "title": "Example"}],
             next_run_at=timezone.now() - timedelta(minutes=1),
         )
 
-        # 创建上一条快照（相同内容 → diff 为空）
+        # 创建上一条快照（原始 Markdown 相同，但 LLM 输出不同）
         now = timezone.now()
-        prev_llm_path = file_storage.save_llm_clean_md(
-            project.id, "https://example.com", "llm_clean_md_content", now
-        )
-        DataSnapshot.objects.create(
-            project=project,
-            source_url="https://example.com",
-            source_title="Example",
-            raw_html_path="/tmp/prev.html",
-            clean_md_path=prev_llm_path,
+        self._create_prev_snapshot(
+            project,
+            raw_md="line1\nline2\nline3",
+            llm_md="old_llm_md_content",
             fetch_time=now - timedelta(hours=1),
         )
 
         scheduler_service.run_scan()
 
-        # judge_diff 不应被调用（文本 diff 为空直接熔断）
+        # judge_diff / generate_intel 都不应被调用（raw diff 为空直接熔断）
         self.mock_judge.assert_not_called()
-        # generate_intel 不应被调用
         self.mock_generate.assert_not_called()
-        # NO_CHANGE feed
-        no_change_feeds = IntelligenceFeed.objects.filter(
-            project=project, job_status=IntelligenceFeed.JobStatus.NO_CHANGE
+
+        feed = IntelligenceFeed.objects.get(
+            project=project,
+            job_status=IntelligenceFeed.JobStatus.NO_CHANGE,
         )
-        self.assertEqual(no_change_feeds.count(), 1)
+        self.assertEqual(feed.diff_text, "")
+        self.assertEqual(feed.raw_diff_text, "")
+        self.assertIn("原始页面内容无变化", feed.change_summary)
+
+    @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
+    def test_run_scan_canonical_diff_empty_no_change(self, mock_fetch):
+        """raw diff 非空但规则归一化后为空 → NO_CHANGE，并保留 raw_diff_text。"""
+        mock_fetch.return_value = ("<html></html>", "## 功能介绍\n\n🎨\n\n$29/月")
+        project = self._create_project(
+            competitor_urls=[{"url": "https://example.com", "title": "Example"}],
+            next_run_at=timezone.now() - timedelta(minutes=1),
+        )
+
+        now = timezone.now()
+        self._create_prev_snapshot(
+            project,
+            raw_md="## 功能介绍\n\n$29/月",
+            llm_md="old_llm_md_content",
+            fetch_time=now - timedelta(hours=1),
+        )
+
+        scheduler_service.run_scan()
+
+        self.mock_judge.assert_not_called()
+        self.mock_generate.assert_not_called()
+
+        feed = IntelligenceFeed.objects.get(
+            project=project,
+            job_status=IntelligenceFeed.JobStatus.NO_CHANGE,
+        )
+        self.assertEqual(feed.diff_text, "")
+        self.assertTrue(feed.raw_diff_text)
+        self.assertIn("规则归一化后内容无变化", feed.change_summary)
 
     @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
     def test_run_scan_judge_no_meaningful_change(self, mock_fetch):
-        """有历史快照 + diff 非空 + LLM 判断无意义 → NO_CHANGE。"""
-        from apps.intelligence.services import file_storage
-
-        mock_fetch.return_value = ("<html></html>", "line1\nline2\nline3")
-        # denoise 返回与上一条不同的内容 → diff 非空
-        self.mock_denoise.return_value = "new_llm_md_content_different"
+        """有历史快照 + canonical diff 非空 + LLM 判断无意义 → NO_CHANGE。"""
+        mock_fetch.return_value = ("<html></html>", "new raw content")
         self.mock_judge.return_value = {"has_meaningful_change": False, "reason": "只是排版变化"}
 
         project = self._create_project(
@@ -344,17 +400,12 @@ class SchedulerServiceTest(TestCase):
             next_run_at=timezone.now() - timedelta(minutes=1),
         )
 
-        # 创建上一条快照
+        # 创建上一条快照（原始 Markdown 不同 → canonical diff 非空）
         now = timezone.now()
-        prev_llm_path = file_storage.save_llm_clean_md(
-            project.id, "https://example.com", "old_llm_md_content", now
-        )
-        DataSnapshot.objects.create(
-            project=project,
-            source_url="https://example.com",
-            source_title="Example",
-            raw_html_path="/tmp/prev.html",
-            clean_md_path=prev_llm_path,
+        self._create_prev_snapshot(
+            project,
+            raw_md="old raw content",
+            llm_md="old_llm_md_content",
             fetch_time=now - timedelta(hours=1),
         )
 
@@ -370,13 +421,12 @@ class SchedulerServiceTest(TestCase):
         )
         self.assertEqual(no_change_feeds.count(), 1)
         self.assertIn("排版变化", no_change_feeds.first().change_summary)
+        self.assertTrue(no_change_feeds.first().raw_diff_text)
 
     @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
     def test_run_scan_judge_has_meaningful_change(self, mock_fetch):
-        """有历史快照 + diff 非空 + LLM 判断有意义 → CHANGED。"""
-        from apps.intelligence.services import file_storage
-
-        mock_fetch.return_value = ("<html></html>", "line1\nline2\nline3")
+        """有历史快照 + canonical diff 非空 + LLM 判断有意义 → CHANGED。"""
+        mock_fetch.return_value = ("<html></html>", "### Starter\n\n$39/月")
         self.mock_denoise.return_value = "new_llm_md_content_different"
 
         project = self._create_project(
@@ -384,17 +434,12 @@ class SchedulerServiceTest(TestCase):
             next_run_at=timezone.now() - timedelta(minutes=1),
         )
 
-        # 创建上一条快照
+        # 创建上一条快照（原始 Markdown 不同，LLM 文本只是辅料）
         now = timezone.now()
-        prev_llm_path = file_storage.save_llm_clean_md(
-            project.id, "https://example.com", "old_llm_md_content", now
-        )
-        DataSnapshot.objects.create(
-            project=project,
-            source_url="https://example.com",
-            source_title="Example",
-            raw_html_path="/tmp/prev.html",
-            clean_md_path=prev_llm_path,
+        self._create_prev_snapshot(
+            project,
+            raw_md="### Starter\n\n$29/月",
+            llm_md="old_llm_md_content",
             fetch_time=now - timedelta(hours=1),
         )
 
@@ -409,12 +454,14 @@ class SchedulerServiceTest(TestCase):
             project=project, job_status=IntelligenceFeed.JobStatus.CHANGED
         )
         self.assertEqual(changed_feeds.count(), 1)
+        feed = changed_feeds.first()
+        self.assertIn("+$39/月", feed.diff_text)
+        self.assertIn("-$29/月", feed.diff_text)
+        self.assertNotIn("new_llm_md_content_different", feed.diff_text)
 
     @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
     def test_run_scan_old_format_compatibility(self, mock_fetch):
-        """旧格式快照（clean_md_path 无 llm_ 前缀）→ 跳过 diff → CHANGED。"""
-        from apps.intelligence.services import file_storage
-
+        """旧格式快照（缺少 raw_md_path / clean_md_path 无 llm_）→ 跳过 diff → CHANGED。"""
         mock_fetch.return_value = ("<html></html>", "line1\nline2\nline3")
 
         project = self._create_project(
@@ -424,16 +471,13 @@ class SchedulerServiceTest(TestCase):
 
         # 创建旧格式快照（使用 save_clean_md 而非 save_llm_clean_md → 无 llm_ 前缀）
         now = timezone.now()
-        prev_bs_path = file_storage.save_clean_md(
-            project.id, "https://example.com", "old_bs_clean_md", now
-        )
-        DataSnapshot.objects.create(
-            project=project,
-            source_url="https://example.com",
-            source_title="Example",
-            raw_html_path="/tmp/prev.html",
-            clean_md_path=prev_bs_path,  # BS 版本，无 llm_ 前缀
+        self._create_prev_snapshot(
+            project,
+            raw_md="old_bs_clean_md",
+            llm_md="old_bs_clean_md",
             fetch_time=now - timedelta(hours=1),
+            legacy=True,
+            include_raw_md=False,
         )
 
         scheduler_service.run_scan()
@@ -451,10 +495,7 @@ class SchedulerServiceTest(TestCase):
     @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
     def test_run_scan_judge_diff_failure_writes_error_crawl(self, mock_fetch):
         """LLM diff 判断失败 → ERROR_CRAWL。"""
-        from apps.intelligence.services import file_storage
-
-        mock_fetch.return_value = ("<html></html>", "line1\nline2\nline3")
-        self.mock_denoise.return_value = "new_llm_md_content_different"
+        mock_fetch.return_value = ("<html></html>", "new raw content")
         self.mock_judge.side_effect = Exception("LLM diff 判断超时")
 
         project = self._create_project(
@@ -464,15 +505,10 @@ class SchedulerServiceTest(TestCase):
 
         # 创建上一条快照
         now = timezone.now()
-        prev_llm_path = file_storage.save_llm_clean_md(
-            project.id, "https://example.com", "old_llm_md_content", now
-        )
-        DataSnapshot.objects.create(
-            project=project,
-            source_url="https://example.com",
-            source_title="Example",
-            raw_html_path="/tmp/prev.html",
-            clean_md_path=prev_llm_path,
+        self._create_prev_snapshot(
+            project,
+            raw_md="old raw content",
+            llm_md="old_llm_md_content",
             fetch_time=now - timedelta(hours=1),
         )
 
@@ -501,25 +537,19 @@ class SchedulerServiceTest(TestCase):
     @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
     def test_run_scan_no_change_feed_does_not_push(self, mock_fetch):
         """NO_CHANGE feed → 飞书推送不被调用。"""
-        from apps.intelligence.services import file_storage
-
         mock_fetch.return_value = ("<html></html>", "line1\nline2\nline3")
+        self.mock_denoise.return_value = "new_llm_md_content_different"
         project = self._create_project(
             competitor_urls=[{"url": "https://example.com", "title": "Example"}],
             next_run_at=timezone.now() - timedelta(minutes=1),
         )
 
-        # 创建上一条快照（相同内容 → diff 为空 → NO_CHANGE）
+        # 创建上一条快照（原始 Markdown 相同 → raw diff 为空 → NO_CHANGE）
         now = timezone.now()
-        prev_path = file_storage.save_llm_clean_md(
-            project.id, "https://example.com", "llm_clean_md_content", now
-        )
-        DataSnapshot.objects.create(
-            project=project,
-            source_url="https://example.com",
-            source_title="Example",
-            raw_html_path="/tmp/prev.html",
-            clean_md_path=prev_path,
+        self._create_prev_snapshot(
+            project,
+            raw_md="line1\nline2\nline3",
+            llm_md="old_llm_md_content",
             fetch_time=now - timedelta(hours=1),
         )
 

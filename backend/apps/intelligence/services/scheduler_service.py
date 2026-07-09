@@ -4,15 +4,14 @@
 1. 采集（Firecrawl v2 crawl API）
 2. LLM 语义降噪（第 1 次 LLM 调用）
 3. 保存 LLM 降噪 MD，创建 DataSnapshot（clean_md_path 指向 LLM 版本）
-4. 获取上一条快照 → 首次爬取/旧格式 → 跳过 diff；否则文本 diff
-5. 文本 diff 为空 → 熔断 NO_CHANGE
-6. LLM diff 判断（第 2 次 LLM 调用）→ 无意义 → 熔断 NO_CHANGE
+4. 获取上一条快照 → 首次爬取/旧格式 → 跳过 diff；否则先算原始 MD diff
+5. 原始 MD diff 为空 / 规则归一化 diff 为空 → 熔断 NO_CHANGE
+6. LLM diff 判断（第 2 次 LLM 调用，仅 canonical diff 非空时）→ 无意义 → 熔断 NO_CHANGE
 7. LLM 情报生成（第 3 次 LLM 调用，instructor + Pydantic）
 8. 写 IntelligenceFeed(CHANGED) + Jinja2 报告落盘 + 飞书推送
 """
 
 import logging
-from pathlib import Path
 
 from django.utils import timezone
 
@@ -143,29 +142,35 @@ def _get_competitor_context(project, index: int) -> str:
     return "暂无竞品补充文档"
 
 
-def _compute_raw_diff(current_snapshot, prev_snapshot) -> str:
-    """计算 Firecrawl 降噪前 MD 的 diff（当前快照 vs 上一条快照）。
+def _create_no_change_feed(project, now, change_summary: str, raw_diff_text: str = "", diff_text: str = ""):
+    """写入 NO_CHANGE 记录。"""
+    IntelligenceFeed.objects.create(
+        project=project,
+        job_status=IntelligenceFeed.JobStatus.NO_CHANGE,
+        change_summary=change_summary,
+        diff_text=diff_text,
+        raw_diff_text=raw_diff_text,
+        published_at=now,
+    )
 
-    用于 NO_CHANGE 时展示"LLM 降噪前的原始变化"，帮助用户判断 LLM 是否误杀。
 
-    Args:
-        current_snapshot: 当前 DataSnapshot
-        prev_snapshot: 上一条 DataSnapshot（可能为 None）
+def _read_raw_markdown(snapshot) -> str:
+    """读取快照对应的 Firecrawl Markdown。"""
+    if not snapshot or not snapshot.raw_md_path:
+        raise FileNotFoundError("snapshot.raw_md_path 为空")
 
-    Returns:
-        unified diff 字符串；无上一条或读取失败返回空字符串
-    """
-    if not prev_snapshot or not prev_snapshot.raw_md_path or not current_snapshot.raw_md_path:
-        return ""
+    from apps.intelligence.services import blob_storage
 
-    try:
-        from apps.intelligence.services import blob_storage
-        prev_raw = blob_storage.read_content(prev_snapshot.raw_md_path)
-        curr_raw = blob_storage.read_content(current_snapshot.raw_md_path)
-        return diff_service.text_diff(curr_raw, prev_raw)
-    except Exception as e:
-        logger.warning(f"[计算原始 diff 失败] {e}")
-        return ""
+    return blob_storage.read_content(snapshot.raw_md_path)
+
+
+def _is_legacy_snapshot(snapshot) -> bool:
+    """判断历史快照是否缺少稳定 diff 所需的数据。"""
+    return (
+        not snapshot.raw_md_path
+        or not snapshot.clean_md_path
+        or "llm_" not in snapshot.clean_md_path
+    )
 
 
 def _process_url(project, url, title, now, crawl_hint="", competitor_context=""):
@@ -175,13 +180,13 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
     """
     # === Step 1: 采集 ===
     try:
-        raw_md, clean_md = crawler_service.fetch_and_clean(url, crawl_hint)
-        logger.info(f"[采集完成] {url} raw={len(raw_md)} chars, clean={len(clean_md)} chars")
+        raw_html, clean_md = crawler_service.fetch_and_clean(url, crawl_hint)
+        logger.info(f"[采集完成] {url} raw_html={len(raw_html)} chars, clean_md={len(clean_md)} chars")
     except Exception as e:
         logger.error(f"[采集异常] {url} - {e}", exc_info=True)
-        raw_md, clean_md = "", ""
+        raw_html, clean_md = "", ""
 
-    if not raw_md or not clean_md:
+    if not raw_html or not clean_md:
         IntelligenceFeed.objects.create(
             project=project,
             job_status=IntelligenceFeed.JobStatus.ERROR_CRAWL,
@@ -192,9 +197,12 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
         logger.warning(f"[采集失败] {url} → ERROR_CRAWL")
         return
 
-    # === Step 2: 保存原始 HTML 和 Firecrawl 清洗 MD（Firecrawl 版本存 raw_md_path）===
-    raw_html_path = file_storage.save_raw_html(project.id, url, raw_md, now)
+    # === Step 2: 保存原始 HTML 和 Firecrawl Markdown（raw_md_path 指向 Firecrawl 版本）===
+    raw_html_path = file_storage.save_raw_html(project.id, url, raw_html, now)
     raw_md_path = file_storage.save_clean_md(project.id, url, clean_md, now)
+    logger.info(f"[Blob链接-本次] {url}")
+    logger.info(f"  raw_html: {raw_html_path}")
+    logger.info(f"  raw_md (Firecrawl Markdown): {raw_md_path}")
 
     # === Step 3: LLM 语义降噪（第 1 次 LLM 调用）===
     try:
@@ -212,6 +220,7 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
 
     # === Step 4: 保存 LLM 降噪 MD，创建快照（clean_md_path 指向 LLM 版本）===
     llm_clean_md_path = file_storage.save_llm_clean_md(project.id, url, llm_clean_md, now)
+    logger.info(f"  llm_clean_md (LLM降噪后): {llm_clean_md_path}")
     snapshot = DataSnapshot.objects.create(
         project=project,
         source_url=url,
@@ -229,9 +238,16 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
         source_url=url,
     ).exclude(pk=snapshot.pk).first()
 
-    # 计算 Firecrawl 降噪前 MD 的 diff（用于 NO_CHANGE 时展示原始变化）
-    raw_diff_text = _compute_raw_diff(snapshot, prev_snapshot)
+    # 打印上一次抓取的 blob 链接
+    if prev_snapshot:
+        logger.info(f"[Blob链接-上次] {url}")
+        logger.info(f"  raw_html: {prev_snapshot.raw_html_path}")
+        logger.info(f"  raw_md (Firecrawl Markdown): {prev_snapshot.raw_md_path}")
+        logger.info(f"  llm_clean_md (LLM降噪后): {prev_snapshot.clean_md_path}")
+    else:
+        logger.info(f"[Blob链接-上次] {url} 无历史快照")
 
+    raw_diff_text = ""
     diff_text = ""
     skip_diff = False
 
@@ -240,35 +256,45 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
         logger.info(f"[首次爬取] {url} 无历史快照，跳过 diff")
         skip_diff = True
         diff_text = llm_clean_md
-    elif not prev_snapshot.clean_md_path or "llm_" not in prev_snapshot.clean_md_path:
-        # 旧格式兼容：上一条是 pre-LLM 快照（Blob URL pathname 中无 llm_ 前缀）
-        logger.info(f"[旧格式兼容] {url} 上一条快照为 pre-LLM 格式，跳过 diff")
+    elif _is_legacy_snapshot(prev_snapshot):
+        # 旧格式兼容：上一条缺少 raw_md_path 或 clean_md_path 非 llm_ 版本
+        logger.info(f"[旧格式兼容] {url} 上一条快照缺少稳定 diff 所需字段，跳过 diff")
         skip_diff = True
         diff_text = llm_clean_md
     else:
-        # === Step 6: 从 Blob URL 读取上一条 LLM 降噪 MD，做文本 diff ===
-        prev_md = ""
+        # === Step 6: 读取当前/上一条 Firecrawl Markdown，先算原始 diff，再算规则归一化 diff ===
+        curr_raw_md = ""
+        prev_raw_md = ""
         try:
-            from apps.intelligence.services import blob_storage
-            prev_md = blob_storage.read_content(prev_snapshot.clean_md_path)
+            curr_raw_md = _read_raw_markdown(snapshot)
+            prev_raw_md = _read_raw_markdown(prev_snapshot)
         except Exception as e:
-            logger.warning(f"[读取上一条快照失败] {url} - {e}，跳过 diff")
+            logger.warning(f"[读取原始 Markdown 失败] {url} - {e}，跳过 diff")
             skip_diff = True
             diff_text = llm_clean_md
 
         if not skip_diff:
-            diff_text = diff_service.text_diff(llm_clean_md, prev_md)
-            if not diff_text:
-                # 文本 diff 为空 → 熔断
-                IntelligenceFeed.objects.create(
-                    project=project,
-                    job_status=IntelligenceFeed.JobStatus.NO_CHANGE,
-                    change_summary="LLM 降噪后内容无变化",
-                    diff_text="",
+            raw_diff_text = diff_service.text_diff(curr_raw_md, prev_raw_md)
+            if raw_diff_text:
+                logger.info(f"[Diff-原始MD] {url} raw_diff_text ({len(raw_diff_text)} chars):\n{raw_diff_text}")
+            else:
+                logger.info(f"[Diff-原始MD] {url} 无变化（raw_diff_text 为空）")
+                _create_no_change_feed(project, now, "原始页面内容无变化")
+                logger.info(f"[熔断] {url} 原始页面内容无变化 → NO_CHANGE")
+                return
+
+            diff_text = diff_service.canonical_text_diff(curr_raw_md, prev_raw_md)
+            if diff_text:
+                logger.info(f"[Diff-规则归一化] {url} diff_text ({len(diff_text)} chars):\n{diff_text}")
+            else:
+                logger.info(f"[Diff-规则归一化] {url} 无变化（diff_text 为空）")
+                _create_no_change_feed(
+                    project,
+                    now,
+                    "规则归一化后内容无变化",
                     raw_diff_text=raw_diff_text,
-                    published_at=now,
                 )
-                logger.info(f"[熔断] {url} 文本 diff 为空 → NO_CHANGE")
+                logger.info(f"[熔断] {url} 规则归一化后内容无变化 → NO_CHANGE")
                 return
 
     # === Step 7: LLM diff 判断（第 2 次 LLM 调用，仅非跳过时执行）===
@@ -282,18 +308,18 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
                 job_status=IntelligenceFeed.JobStatus.ERROR_CRAWL,
                 change_summary=f"LLM diff 判断失败: {e}",
                 diff_text=diff_text,
+                raw_diff_text=raw_diff_text,
                 published_at=now,
             )
             return
 
         if not judge_result.get("has_meaningful_change"):
-            IntelligenceFeed.objects.create(
-                project=project,
-                job_status=IntelligenceFeed.JobStatus.NO_CHANGE,
-                change_summary=judge_result.get("reason", "LLM 判断无意义变化"),
-                diff_text=diff_text,
+            _create_no_change_feed(
+                project,
+                now,
+                judge_result.get("reason", "LLM 判断无意义变化"),
                 raw_diff_text=raw_diff_text,
-                published_at=now,
+                diff_text=diff_text,
             )
             logger.info(f"[熔断] {url} LLM 判断无意义变化 → NO_CHANGE")
             return
@@ -306,6 +332,7 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
             self_product_doc=project.self_product_doc,
             few_shots=few_shots,
             competitor_context=competitor_context,
+            page_content=llm_clean_md,
         )
     except Exception as e:
         logger.error(f"[LLM情报生成失败] {url} - {e}", exc_info=True)
@@ -314,6 +341,7 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
             job_status=IntelligenceFeed.JobStatus.ERROR_CRAWL,
             change_summary=f"LLM 情报生成失败: {e}",
             diff_text=diff_text,
+            raw_diff_text=raw_diff_text,
             published_at=now,
         )
         return
@@ -328,6 +356,7 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
         action_suggestion=intel_result.action_suggestion,
         evidence_diff=intel_result.evidence_diff,
         diff_text=diff_text,
+        raw_diff_text=raw_diff_text,
         published_at=now,
     )
     logger.info(f"[情报入库] {url} → feed {feed.id} CHANGED")

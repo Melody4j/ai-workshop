@@ -37,6 +37,7 @@ class SchedulerServiceTest(TestCase):
             "apps.intelligence.services.scheduler_service.llm_service.generate_intel"
         ).start()
         self.mock_generate.return_value = IntelResult(
+            competitor_overview="竞品A是AI设计工具",
             change_summary="竞品新增AI绘图功能",
             strategic_intent="拓展AI创作赛道",
             action_suggestion="评估我方是否跟进",

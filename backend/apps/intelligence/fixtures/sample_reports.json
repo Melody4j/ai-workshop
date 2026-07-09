@@ -1,0 +1,64 @@
+[
+  {
+    "model": "intelligence.monitorproject",
+    "pk": 1,
+    "fields": {
+      "created_at": "2026-07-07T09:00:00Z",
+      "updated_at": "2026-07-07T09:00:00Z",
+      "project_name": "AI IDE Monitor",
+      "competitor_urls": [
+        {
+          "title": "Lovable",
+          "url": "https://lovable.dev"
+        },
+        {
+          "title": "v0",
+          "url": "https://v0.dev"
+        }
+      ],
+      "self_product_doc": "We help indie builders monitor fast-moving AI product changes.",
+      "cron": "0 9 * * *",
+      "feishu_webhook": "",
+      "refined_rules": "",
+      "is_active": true
+    }
+  },
+  {
+    "model": "intelligence.intelligencefeed",
+    "pk": 1,
+    "fields": {
+      "created_at": "2026-07-07T09:10:00Z",
+      "updated_at": "2026-07-07T09:10:00Z",
+      "project": 1,
+      "job_status": "CHANGED",
+      "change_summary": "Lovable added a new homepage block focused on AI workflow shipping speed.",
+      "strategic_intent": "The competitor is sharpening its differentiation around faster delivery for solo teams.",
+      "action_suggestion": "Review our homepage hero to make our shipping speed value more explicit.",
+      "evidence_diff": "New section: 'Ship AI workflows in minutes'.",
+      "user_feedback": null,
+      "user_comment": "",
+      "html_report_path": "/reports/lovable-homepage.html",
+      "md_table_path": "/reports/lovable-homepage.md",
+      "published_at": "2026-07-07T09:10:00Z"
+    }
+  },
+  {
+    "model": "intelligence.intelligencefeed",
+    "pk": 2,
+    "fields": {
+      "created_at": "2026-07-06T09:10:00Z",
+      "updated_at": "2026-07-06T09:25:00Z",
+      "project": 1,
+      "job_status": "CHANGED",
+      "change_summary": "v0 refreshed its pricing page and now highlights a higher annual plan.",
+      "strategic_intent": "The competitor appears to be nudging users toward higher-commitment subscriptions.",
+      "action_suggestion": "Benchmark our pricing page language against the new annual plan framing.",
+      "evidence_diff": "Pricing page now shows a highlighted annual card.",
+      "user_feedback": -1,
+      "user_comment": "Too generic, need stronger product-specific takeaways.",
+      "html_report_path": "/reports/v0-pricing.html",
+      "md_table_path": "/reports/v0-pricing.md",
+      "published_at": "2026-07-06T09:10:00Z"
+    }
+  }
+]

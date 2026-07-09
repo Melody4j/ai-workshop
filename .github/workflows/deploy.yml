@@ -1,0 +1,57 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python deps
+        run: |
+          pip install -r backend/requirements/base.txt
+
+      - name: Run Django checks
+        working-directory: backend
+        env:
+          DJANGO_SECRET_KEY: ci-secret-key
+          DEBUG: 'False'
+          DATABASE_URL: 'sqlite:///db.sqlite3'
+        run: |
+          python manage.py check
+
+      - name: Run Django tests
+        working-directory: backend
+        env:
+          DJANGO_SECRET_KEY: ci-secret-key
+          DEBUG: 'False'
+          DATABASE_URL: 'sqlite:///db.sqlite3'
+        run: |
+          python manage.py test --verbosity=2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build frontend
+        run: |
+          cd frontend && npm install && npm run build
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      - name: Deploy to Vercel
+        run: vercel --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

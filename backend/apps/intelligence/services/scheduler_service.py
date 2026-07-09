@@ -65,6 +65,7 @@ def run_scan():
                     project=project,
                     job_status=IntelligenceFeed.JobStatus.ERROR_CRAWL,
                     change_summary=f"处理异常: {e}",
+                    diff_text="",
                     published_at=now,
                 )
 
@@ -97,6 +98,7 @@ def _process_url(project, url, title, now, crawl_hint=""):
             project=project,
             job_status=IntelligenceFeed.JobStatus.ERROR_CRAWL,
             change_summary=f"采集失败: {url}",
+            diff_text="",
             published_at=now,
         )
         logger.warning(f"[采集失败] {url} → ERROR_CRAWL")
@@ -115,6 +117,7 @@ def _process_url(project, url, title, now, crawl_hint=""):
             project=project,
             job_status=IntelligenceFeed.JobStatus.ERROR_CRAWL,
             change_summary=f"LLM 降噪失败: {e}",
+            diff_text="",
             published_at=now,
         )
         return
@@ -213,6 +216,7 @@ def _process_url(project, url, title, now, crawl_hint=""):
             project=project,
             job_status=IntelligenceFeed.JobStatus.ERROR_CRAWL,
             change_summary=f"LLM 情报生成失败: {e}",
+            diff_text=diff_text,
             published_at=now,
         )
         return

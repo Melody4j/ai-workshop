@@ -13,3 +13,5 @@ requests>=2.31.0
 # 数据库（Postgres）
 dj-database-url>=2.0
 psycopg2-binary>=2.9
+# Vercel Blob 存储
+vercel_blob>=0.4.0

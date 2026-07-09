@@ -7,6 +7,7 @@
 """
 
 import logging
+import os
 
 import inngest
 
@@ -15,8 +16,8 @@ logger = logging.getLogger(__name__)
 # 创建 Inngest 客户端
 inngest_client = inngest.Inngest(
     app_id="ai_workshop",
-    event_key=__import__("os").environ.get("INNGEST_EVENT_KEY", ""),
-    signing_key=__import__("os").environ.get("INNGEST_SIGNING_KEY", ""),
+    event_key=os.environ.get("INNGEST_EVENT_KEY", ""),
+    signing_key=os.environ.get("INNGEST_SIGNING_KEY", ""),
 )
 
 

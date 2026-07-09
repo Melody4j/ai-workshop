@@ -282,6 +282,7 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
                 job_status=IntelligenceFeed.JobStatus.ERROR_CRAWL,
                 change_summary=f"LLM diff 判断失败: {e}",
                 diff_text=diff_text,
+                raw_diff_text=raw_diff_text,
                 published_at=now,
             )
             return
@@ -315,6 +316,7 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
             job_status=IntelligenceFeed.JobStatus.ERROR_CRAWL,
             change_summary=f"LLM 情报生成失败: {e}",
             diff_text=diff_text,
+            raw_diff_text=raw_diff_text,
             published_at=now,
         )
         return
@@ -329,6 +331,7 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
         action_suggestion=intel_result.action_suggestion,
         evidence_diff=intel_result.evidence_diff,
         diff_text=diff_text,
+        raw_diff_text=raw_diff_text,
         published_at=now,
     )
     logger.info(f"[情报入库] {url} → feed {feed.id} CHANGED")

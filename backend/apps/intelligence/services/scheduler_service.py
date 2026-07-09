@@ -34,6 +34,9 @@ def run_scan():
     now_local = timezone.localtime(now)
     active_projects = MonitorProject.objects.filter(is_active=True)
     project_count = active_projects.count()
+    if project_count == 0:
+        return
+
     logger.info(f"[扫描开始] 当前 {project_count} 个活跃项目, 时间 {now_local:%Y-%m-%d %H:%M:%S}")
 
     for project in active_projects:

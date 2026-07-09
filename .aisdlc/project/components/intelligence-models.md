@@ -9,6 +9,7 @@
   - [0003_monitorproject_next_run_at.py](../../../backend/apps/intelligence/migrations/0003_monitorproject_next_run_at.py)
   - [0004_remove_datasnapshot_clean_markdown_and_more.py](../../../backend/apps/intelligence/migrations/0004_remove_datasnapshot_clean_markdown_and_more.py)
   - [0005_intelligencefeed_push_status.py](../../../backend/apps/intelligence/migrations/0005_intelligencefeed_push_status.py)
+  - [0006_diff_text_promptversion.py](../../../backend/apps/intelligence/migrations/0006_diff_text_promptversion.py)
 
 ## Data Contract
 
@@ -33,6 +34,9 @@
 13. `IntelligenceFeed.push_status` 保持兼容 `NOT_PUSHED` / `PUSHED` / `PUSH_FAILED`，默认 `NOT_PUSHED`（来源：Spec 005）
 14. `push_status` 与 `job_status` 正交——`job_status` 标识情报结果，`push_status` 标识推送结果，不互相覆盖（来源：Spec 005）
 15. 仅 `job_status=CHANGED` 的记录触发推送（来源：Spec 005）
+16. `IntelligenceFeed.diff_text` 在所有记录创建时写入：CHANGED=实际diff, NO_CHANGE=""或diff, 首次爬取=llm_clean_md全量（来源：Spec 006）
+17. `PromptVersion` 存储 prompt 全文版本（prompt_name / content / version / feed FK SET_NULL / optimization_reason），`version` 按 `prompt_name` 分组自增（来源：Spec 006）
+18. `PromptVersion.feed` 使用 `SET_NULL`，feed 删除后版本记录保留（来源：Spec 006）
 
 ### Evidence
 
@@ -47,6 +51,7 @@
 - [backend/apps/intelligence/tests/test_feishu_service.py](../../../backend/apps/intelligence/tests/test_feishu_service.py)
 - [backend/apps/intelligence/tests/test_llm_pipeline_e2e.py](../../../backend/apps/intelligence/tests/test_llm_pipeline_e2e.py)
 - [backend/apps/intelligence/tests/test_file_storage.py](../../../backend/apps/intelligence/tests/test_file_storage.py)
+- [backend/apps/intelligence/tests/test_prompt_optimizer_service.py](../../../backend/apps/intelligence/tests/test_prompt_optimizer_service.py)
 
 ## Evidence Gaps
 

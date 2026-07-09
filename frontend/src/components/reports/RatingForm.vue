@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue"
+import { computed, ref, watch } from "vue"
 
 const props = defineProps<{
   initialFeedback: number | null
@@ -14,6 +14,11 @@ const emit = defineEmits<{
 
 const feedback = ref<number | null>(null)
 const comment = ref("")
+
+/** 已完成评分（有评分 + 有评语）时禁用编辑，需先清空才能重新评分 */
+const isComplete = computed(
+  () => props.initialFeedback !== null && props.initialComment.trim() !== "",
+)
 
 watch(
   () => [props.initialFeedback, props.initialComment] as const,
@@ -48,7 +53,7 @@ function save() {
       </el-button>
     </div>
 
-    <el-radio-group v-model="feedback" class="rating-options">
+    <el-radio-group v-model="feedback" class="rating-options" :disabled="isComplete">
       <el-radio-button :label="1">有帮助</el-radio-button>
       <el-radio-button :label="-1">没帮助</el-radio-button>
     </el-radio-group>
@@ -60,12 +65,13 @@ function save() {
           type="textarea"
           :rows="4"
           placeholder="这条报告为什么有帮助或没帮助？"
+          :disabled="isComplete"
         />
       </el-form-item>
     </el-form>
 
     <div class="action-row">
-      <el-button type="primary" :disabled="loading" @click="save">保存评分</el-button>
+      <el-button type="primary" :disabled="loading || isComplete" @click="save">保存评分</el-button>
     </div>
   </el-card>
 </template>

@@ -426,3 +426,49 @@ class ReportRatingOptimizeTriggerTest(APITestCase):
         self.assertEqual(self.feed.user_feedback, 1)
         # _async_optimize_prompts 未被调用
         mock_async.assert_not_called()
+
+    @patch("apps.intelligence.views._async_optimize_prompts")
+    def test_patch_to_minus1_triggers_optimization(self, mock_async) -> None:
+        """PATCH 将评分从 +1 改为 -1 → 触发优化"""
+        # 先 POST +1（无评语）
+        self.client.post(
+            reverse("report-rating", kwargs={"pk": self.feed.pk}),
+            {"user_feedback": 1, "user_comment": ""},
+            format="json",
+        )
+        mock_async.reset_mock()
+
+        # PATCH 改为 -1
+        response = self.client.patch(
+            reverse("report-rating", kwargs={"pk": self.feed.pk}),
+            {"user_feedback": -1, "user_comment": "分析太笼统"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.feed.refresh_from_db()
+        self.assertEqual(self.feed.user_feedback, -1)
+        mock_async.assert_called_once_with(self.feed.pk)
+
+    @patch("apps.intelligence.views._async_optimize_prompts")
+    def test_patch_to_plus1_does_not_trigger(self, mock_async) -> None:
+        """PATCH 将评分从 -1 改为 +1 → 不触发优化"""
+        # 先 POST -1
+        self.client.post(
+            reverse("report-rating", kwargs={"pk": self.feed.pk}),
+            {"user_feedback": -1, "user_comment": ""},
+            format="json",
+        )
+        mock_async.reset_mock()
+
+        # PATCH 改为 +1
+        response = self.client.patch(
+            reverse("report-rating", kwargs={"pk": self.feed.pk}),
+            {"user_feedback": 1, "user_comment": "改主意了"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.feed.refresh_from_db()
+        self.assertEqual(self.feed.user_feedback, 1)
+        mock_async.assert_not_called()

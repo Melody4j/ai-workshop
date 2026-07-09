@@ -25,6 +25,11 @@
 8. 推送服务入口为 `feishu_service.push_intelligence(feed_id)`，返回 `"pushed"` / `"push_failed"` / `"skipped"` / `"skipped_no_webhook"` / `"not_found"`（来源：Spec 005）
 9. `GET /view/html/{id}`：HTML 报告在线预览（inline，`Content-Type: text/html`），读取 `feed.html_report_path` 文件返回；文件不存在或 path 为空返回 404（来源：Spec 004）
 10. `GET /api/feeds/{id}/preview_html`：同上 API 路由入口（来源：Spec 004）
+11. `POST /api/feeds/{id}/optimize_prompt`：手动触发 prompt 优化，同步返回 `{"intel_system_version": N, "intel_user_version": M}`（来源：Spec 006）
+12. 评分=-1 通过 POST 或 PATCH 均触发异步 prompt 优化（threading.Thread, daemon=True）（来源：Spec 006）
+13. 评分=+1 不触发优化（来源：Spec 006）
+14. 异步优化失败不影响评分保存（threading 内 try-except，仅 logger.error）（来源：Spec 006）
+15. 前端已完成评分（有评分+有评语）时禁用评分控件，需清空后才能重新评分（来源：Spec 006）
 
 ### Evidence
 
@@ -33,6 +38,8 @@
 - [backend/config/urls.py](../../../backend/config/urls.py)
 - [backend/apps/intelligence/serializers.py](../../../backend/apps/intelligence/serializers.py)
 - [backend/apps/intelligence/services/feishu_service.py](../../../backend/apps/intelligence/services/feishu_service.py)
+- [backend/apps/intelligence/services/prompt_optimizer_service.py](../../../backend/apps/intelligence/services/prompt_optimizer_service.py)
+- [frontend/src/components/reports/RatingForm.vue](../../../frontend/src/components/reports/RatingForm.vue)
 - [backend/apps/intelligence/tests/test_api.py](../../../backend/apps/intelligence/tests/test_api.py)
 - [backend/apps/intelligence/tests/test_feishu_service.py](../../../backend/apps/intelligence/tests/test_feishu_service.py)
 

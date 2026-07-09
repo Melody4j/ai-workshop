@@ -37,7 +37,7 @@
 ### Invariants
 
 1. 全局扫描 Job 由 `apps.py ready()` 在 `RUN_MAIN=true` 时启动，非 autoreload 进程不启动
-2. `run_scan()` 只处理 `is_active=True` 且 `next_run_at <= now`（或 `next_run_at is None`）的项目
+2. `run_scan()` 只处理 `is_active=True` 且 `next_run_at <= now`（或 `next_run_at is None`）的项目；无活跃项目时直接 return（来源：Spec 006 优化）
 3. httpx 优先采集，`clean_markdown < 3 行` 时降级 Playwright
 4. 采集失败写 ERROR_CRAWL（不创建快照），不中断其他 URL
 5. 本模块串接 LLM 链路后写 IntelligenceFeed（11 步链路：采集→降噪→diff熔断→情报生成→入库→报告→推送）（Spec 004 修订）
@@ -47,12 +47,14 @@
 9. 飞书推送异常不中断主流程（try-except 隔离）（Spec 004 新增）
 10. `competitor_urls` 中的空 URL 被跳过，不写快照
 11. `next_run_at` 更新使用 `save(update_fields=["next_run_at"])`，不触发 save() 中的 cron 重算
+12. 所有 `IntelligenceFeed.objects.create()` 调用必须写入 `diff_text`（CHANGED=实际diff, NO_CHANGE=""或diff, 首次爬取=llm_clean_md全量）（来源：Spec 006）
 
 ### Evidence
 
 - [backend/apps/intelligence/scheduler.py](../../../backend/apps/intelligence/scheduler.py)
 - [backend/apps/intelligence/apps.py](../../../backend/apps/intelligence/apps.py)
 - [backend/apps/intelligence/services/scheduler_service.py](../../../backend/apps/intelligence/services/scheduler_service.py)
+- [backend/apps/intelligence/services/prompt_optimizer_service.py](../../../backend/apps/intelligence/services/prompt_optimizer_service.py)
 - [backend/apps/intelligence/services/crawler_service.py](../../../backend/apps/intelligence/services/crawler_service.py)
 - [backend/apps/intelligence/services/cron_matcher.py](../../../backend/apps/intelligence/services/cron_matcher.py)
 - [backend/apps/intelligence/services/file_storage.py](../../../backend/apps/intelligence/services/file_storage.py)

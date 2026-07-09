@@ -121,12 +121,12 @@ LOGGING = {
             "propagate": False,
         },
         "apscheduler": {
-            "level": "INFO",
+            "level": "WARNING",
             "handlers": ["console"],
             "propagate": False,
         },
         "django_apscheduler": {
-            "level": "INFO",
+            "level": "WARNING",
             "handlers": ["console"],
             "propagate": False,
         },

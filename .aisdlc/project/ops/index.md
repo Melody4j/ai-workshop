@@ -19,6 +19,7 @@
 - 依赖清单：[backend/requirements/base.txt](../../../backend/requirements/base.txt)
 - 新增依赖（Spec 003）：django-apscheduler、httpx、html2text、beautifulsoup4、playwright、croniter
 - 新增依赖（Spec 004）：instructor、pydantic、jinja2、openai
+- 新增依赖（Spec 006）：无（复用 instructor + pydantic）
 
 ## Scheduler 运维
 
@@ -27,14 +28,24 @@
 - 生产环境限制：gunicorn/uwsgi 不设 `RUN_MAIN`，scheduler 不会自动启动；多 worker 部署会重复触发
 - 采集文件存储：`{项目根}/data/snapshots/{project_id}/{YYYYMMDD}/{HHMMSS}_{domain}.{ext}`
 - LLM 降噪文件存储：`{项目根}/data/snapshots/{project_id}/{YYYYMMDD}/llm_{HHMMSS}_{domain}.md`（`llm_` 前缀标识）
+- APScheduler 日志级别：`WARNING`（Spec 006 调整，减少调度噪声）
 - 报告产物存储：`{项目根}/data/reports/`
+
+## Prompt 优化运维（Spec 006 新增）
+
+- 优化服务：`backend/apps/intelligence/services/prompt_optimizer_service.py`
+- 触发方式：评分=-1 自动触发（threading 异步）或 `POST /api/feeds/{id}/optimize_prompt` 手动触发
+- Prompt 文件（可覆盖）：`backend/prompts/intel_system.md` / `backend/prompts/intel_user.md`
+- 版本管理：Django Admin → PromptVersion（查看历史版本 / optimization_reason / feed 关联）
+- 回滚操作：从 PromptVersion 记录复制 content 回对应 prompt 文件（手动操作）
+- 优化失败处理：threading 内 try-except 捕获，logger.error 记录，不影响评分保存
 
 ## LLM 配置
 
 - 配置文件：`backend/.env`（gitignored，不入库）
 - 配置项：`LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` / `LLM_TEMPERATURE` / `LLM_MAX_TOKENS`
 - 读取入口：`backend/config/settings.py`（从 `os.environ` 读取）
-- LLM 服务：`backend/apps/intelligence/services/llm_service.py`（3 次独立调用）
+- LLM 服务：`backend/apps/intelligence/services/llm_service.py`（3 次情报链路调用 + 1 次 prompt 优化调用）
 - 重试机制：3 次 / 30s 间隔（`backend/apps/intelligence/services/retry.py`）
 
 ## 飞书推送运维
@@ -56,6 +67,7 @@
 - [backend/apps/intelligence/tests/test_models.py](../../../backend/apps/intelligence/tests/test_models.py)
 - [backend/apps/intelligence/tests/test_scheduler_service.py](../../../backend/apps/intelligence/tests/test_scheduler_service.py)
 - [backend/apps/intelligence/tests/test_feishu_service.py](../../../backend/apps/intelligence/tests/test_feishu_service.py)
+- [backend/apps/intelligence/tests/test_prompt_optimizer_service.py](../../../backend/apps/intelligence/tests/test_prompt_optimizer_service.py)
 - [backend/apps/intelligence/tests/test_llm_pipeline_e2e.py](../../../backend/apps/intelligence/tests/test_llm_pipeline_e2e.py)
 - [backend/apps/intelligence/tests/test_llm_service.py](../../../backend/apps/intelligence/tests/test_llm_service.py)
 - [verification/report-2026-07-08-unknown.md](../../specs/001-competitive-intel-agent/verification/report-2026-07-08-unknown.md)

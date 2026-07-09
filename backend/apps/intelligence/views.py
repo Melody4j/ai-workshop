@@ -106,6 +106,16 @@ class ReportRatingView(APIView):
         serializer = ReportRatingSerializer(feed, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
+        # 评分=-1 时异步触发 prompt 优化
+        if feed.user_feedback == -1:
+            thread = threading.Thread(
+                target=_async_optimize_prompts,
+                args=(feed.pk,),
+                daemon=True,
+            )
+            thread.start()
+
         return Response(IntelligenceFeedDetailSerializer(feed).data, status=status.HTTP_200_OK)
 
     def delete(self, request, pk: int) -> Response:

@@ -3,7 +3,7 @@
 ## Module
 
 - 服务入口：[backend/apps/intelligence/services/report_service.py](../../../backend/apps/intelligence/services/report_service.py)
-- 模板目录：[backend/apps/intelligence/templates/](../../../backend/apps/intelligence/templates/)
+- 模板目录：[backend/templates/reports/](../../../backend/templates/reports/)
 
 ## Service Contract
 
@@ -14,16 +14,17 @@
 
 ### Invariants
 
-1. Jinja2 离线渲染 HTML + MD 报告（模板：`report.html` / `report.md`）
-2. 渲染后路径回写 `IntelligenceFeed.html_report_path` / `md_table_path`
-3. 渲染失败不中断主流程（scheduler try-except 隔离）
-4. 报告产物存储在 `data/reports/` 目录
+1. Jinja2 离线渲染 HTML + MD 报告（模板：`report.html.j2` / `report.md.j2`）
+2. HTML 模板为商务报告风（左色边 #2c3e50 + 分级标题 #3498db + 证据 Diff 红色左边框 #e74c3c + 内联 CSS 自包含，无外部依赖）（来源：Spec 007）
+3. 渲染后路径回写 `IntelligenceFeed.html_report_path` / `md_table_path`
+4. 渲染失败不中断主流程（scheduler try-except 隔离）
+5. 报告产物存储在 `data/reports/` 目录
 
 ### Evidence
 
 - [backend/apps/intelligence/services/report_service.py](../../../backend/apps/intelligence/services/report_service.py)
-- [backend/apps/intelligence/templates/report.html](../../../backend/apps/intelligence/templates/report.html)
-- [backend/apps/intelligence/templates/report.md](../../../backend/apps/intelligence/templates/report.md)
+- [backend/templates/reports/report.html.j2](../../../backend/templates/reports/report.html.j2)
+- [backend/templates/reports/report.md.j2](../../../backend/templates/reports/report.md.j2)
 - [backend/apps/intelligence/tests/test_report_service.py](../../../backend/apps/intelligence/tests/test_report_service.py)
 
 ## Evidence Gaps

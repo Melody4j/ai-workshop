@@ -80,6 +80,47 @@ def run_scan():
     logger.info(f"[扫描结束] 本次扫描完成")
 
 
+def run_scan_for_project(project_id: int):
+    """手动触发单个项目的扫描，跳过 next_run_at 到期检查。
+
+    与 run_scan() 不同，不检查 is_active 和 next_run_at，用户显式触发即执行。
+    """
+    try:
+        project = MonitorProject.objects.get(pk=project_id)
+    except MonitorProject.DoesNotExist:
+        logger.warning(f"[手动执行] 项目 id={project_id} 不存在")
+        return
+
+    now = timezone.now()
+    now_local = timezone.localtime(now)
+    logger.info(f"[手动执行] 项目 {project.project_name} (id={project_id}) 开始, 时间 {now_local:%Y-%m-%d %H:%M:%S}")
+
+    urls = project.competitor_urls or []
+    logger.info(f"[手动执行] 项目 {project.project_name} 共 {len(urls)} 个竞品 URL")
+
+    for idx, item in enumerate(urls, 1):
+        url = (item or {}).get("url", "")
+        if not url:
+            logger.warning(f"[手动执行] 项目 {project.project_name} 第 {idx} 个 URL 为空, 跳过")
+            continue
+        title = (item or {}).get("title", "")
+        crawl_hint = (item or {}).get("crawl_hint", "")
+        logger.info(f"[手动执行] ({idx}/{len(urls)}) {title} - {url}")
+        try:
+            _process_url(project, url, title, now, crawl_hint)
+        except Exception as e:
+            logger.error(f"[手动执行异常] {url} - {e}", exc_info=True)
+            IntelligenceFeed.objects.create(
+                project=project,
+                job_status=IntelligenceFeed.JobStatus.ERROR_CRAWL,
+                change_summary=f"处理异常: {e}",
+                diff_text="",
+                published_at=now,
+            )
+
+    logger.info(f"[手动执行完成] 项目 {project.project_name} (id={project_id}) 执行结束")
+
+
 def _process_url(project, url, title, now, crawl_hint=""):
     """处理单个 URL 的完整链路：采集 → LLM降噪 → diff熔断 → 情报生成 → 入库+报告。
 

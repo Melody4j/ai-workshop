@@ -6,6 +6,7 @@ from .views import (
     FeedOptimizePromptView,
     FeedPushView,
     ProjectDetailView,
+    ProjectExecuteView,
     ProjectListCreateView,
     ReportDetailView,
     ReportListView,
@@ -15,6 +16,7 @@ from .views import (
 urlpatterns = [
     path("projects", ProjectListCreateView.as_view(), name="project-list"),
     path("projects/<int:pk>", ProjectDetailView.as_view(), name="project-detail"),
+    path("projects/<int:pk>/execute", ProjectExecuteView.as_view(), name="project-execute"),
     path("reports", ReportListView.as_view(), name="report-list"),
     path("reports/<int:pk>", ReportDetailView.as_view(), name="report-detail"),
     path("reports/<int:pk>/rating", ReportRatingView.as_view(), name="report-rating"),

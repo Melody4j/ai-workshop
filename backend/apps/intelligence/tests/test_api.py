@@ -110,6 +110,37 @@ class ProjectApiTests(APITestCase):
         self.assertFalse(project.is_active)
 
 
+class ProjectExecuteViewTest(APITestCase):
+    """手动执行项目扫描 API 测试"""
+
+    def setUp(self) -> None:
+        self.project = MonitorProject.objects.create(
+            project_name="测试项目",
+            competitor_urls=[{"title": "Example", "url": "https://example.com"}],
+            cron="0 9 * * *",
+            is_active=True,
+        )
+
+    @patch("apps.intelligence.views._async_run_scan")
+    def test_execute_project_returns_202(self, mock_async) -> None:
+        """POST /api/projects/{id}/execute → 202 Accepted"""
+        response = self.client.post(
+            reverse("project-execute", kwargs={"pk": self.project.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.data["project_id"], self.project.pk)
+        mock_async.assert_called_once_with(self.project.pk)
+
+    def test_execute_project_not_found(self) -> None:
+        """不存在的 project_id → 404"""
+        response = self.client.post(
+            reverse("project-execute", kwargs={"pk": 99999})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
 class ReportApiTests(APITestCase):
     def setUp(self) -> None:
         self.project = MonitorProject.objects.create(

@@ -30,6 +30,15 @@ def _async_optimize_prompts(feed_id: int) -> None:
         logger.error(f"[Prompt优化] feed={feed_id} 异步优化失败: {e}", exc_info=True)
 
 
+def _async_run_scan(project_id: int) -> None:
+    """在后台线程中执行手动扫描，异常仅记录日志。"""
+    try:
+        from .services.scheduler_service import run_scan_for_project
+        run_scan_for_project(project_id)
+    except Exception as e:
+        logger.error(f"[手动执行] project={project_id} 异步执行失败: {e}", exc_info=True)
+
+
 class ProjectListCreateView(generics.ListCreateAPIView):
     queryset = MonitorProject.objects.all()
     serializer_class = MonitorProjectSerializer
@@ -44,6 +53,34 @@ class ProjectDetailView(generics.RetrieveUpdateDestroyAPIView):
     def perform_destroy(self, instance: MonitorProject) -> None:
         instance.is_active = False
         instance.save(update_fields=["is_active", "updated_at"])
+
+
+class ProjectExecuteView(APIView):
+    """手动触发项目扫描。
+
+    POST /api/projects/{id}/execute
+    异步启动后台线程执行扫描（采集 → LLM → 报告 → 推送），立即返回 202。
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request, pk: int) -> Response:
+        try:
+            MonitorProject.objects.get(pk=pk)
+        except MonitorProject.DoesNotExist:
+            raise Http404
+
+        thread = threading.Thread(
+            target=_async_run_scan,
+            args=(pk,),
+            daemon=True,
+        )
+        thread.start()
+
+        return Response(
+            {"detail": "任务已开始执行", "project_id": pk},
+            status=status.HTTP_202_ACCEPTED,
+        )
 
 
 class ReportListView(generics.ListAPIView):

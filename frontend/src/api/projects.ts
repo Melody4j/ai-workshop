@@ -50,3 +50,7 @@ export function updateProject(id: number, payload: Partial<ProjectPayload>): Pro
 export function disableProject(id: number): Promise<void> {
   return deleteJson(`/api/projects/${id}`)
 }
+
+export function executeProject(id: number): Promise<{ detail: string; project_id: number }> {
+  return postJson<{ detail: string; project_id: number }>(`/api/projects/${id}/execute`, {})
+}

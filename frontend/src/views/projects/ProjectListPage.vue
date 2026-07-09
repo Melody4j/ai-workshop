@@ -3,12 +3,13 @@ import { computed, onMounted, ref } from "vue"
 import { ElMessage } from "element-plus"
 import { useRouter } from "vue-router"
 
-import { disableProject, listProjects, type Project } from "../../api/projects"
+import { disableProject, executeProject, listProjects, type Project } from "../../api/projects"
 import { cron2label, getNextRuns, toQuartzCron } from "../../components/cron/cron-utils"
 
 const router = useRouter()
 const projects = ref<Project[]>([])
 const loading = ref(false)
+const executingId = ref<number | null>(null)
 
 const projectNextRuns = computed(() => {
   const map: Record<number, string[]> = {}
@@ -49,6 +50,18 @@ async function archiveProject(id: number) {
     await loadProjects()
   } catch (err) {
     ElMessage.error(err instanceof Error ? err.message : "任务停用失败。")
+  }
+}
+
+async function executeProjectNow(id: number) {
+  executingId.value = id
+  try {
+    await executeProject(id)
+    ElMessage.success("任务已开始执行，请稍后在监控页面查看结果。")
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : "任务执行失败。")
+  } finally {
+    executingId.value = null
   }
 }
 
@@ -115,6 +128,13 @@ onMounted(loadProjects)
         </div>
 
         <div class="action-row action-row--end">
+          <el-button
+            type="primary"
+            :loading="executingId === project.id"
+            @click="executeProjectNow(project.id)"
+          >
+            立即执行
+          </el-button>
           <el-button @click="router.push(`/projects/${project.id}/edit`)">编辑</el-button>
           <el-button text @click="router.push(`/monitoring?project=${project.id}`)">
             查看监控

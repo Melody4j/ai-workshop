@@ -73,6 +73,39 @@ class LLMPipelineE2ETest(TestCase):
             project.refresh_from_db()
         return project
 
+    def _create_prev_snapshot(
+        self,
+        project,
+        *,
+        raw_md="line1\nline2\nline3",
+        llm_md="llm_clean_md_content",
+        url="https://example.com",
+        title="Example",
+        fetch_time=None,
+        legacy=False,
+        include_raw_md=True,
+    ):
+        fetch_time = fetch_time or timezone.now()
+        raw_md_path = (
+            file_storage.save_clean_md(project.id, url, raw_md, fetch_time)
+            if include_raw_md
+            else ""
+        )
+        if legacy:
+            clean_md_path = file_storage.save_clean_md(project.id, url, llm_md, fetch_time)
+        else:
+            clean_md_path = file_storage.save_llm_clean_md(project.id, url, llm_md, fetch_time)
+
+        return DataSnapshot.objects.create(
+            project=project,
+            source_url=url,
+            source_title=title,
+            raw_html_path="/tmp/prev.html",
+            clean_md_path=clean_md_path,
+            raw_md_path=raw_md_path,
+            fetch_time=fetch_time,
+        )
+
     @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
     def test_S001_full_chain_changed(self, mock_fetch):
         """S-001：有变化全链路 → CHANGED + clean_md_path 指向 LLM + 4 字段非空 + 报告路径。
@@ -110,22 +143,20 @@ class LLMPipelineE2ETest(TestCase):
 
     @patch("apps.intelligence.services.scheduler_service.crawler_service.fetch_and_clean")
     def test_S002_text_diff_empty_circuit_breaker(self, mock_fetch):
-        """S-002：无变化熔断 → NO_CHANGE + 零 LLM diff 调用 + 4 字段空。
+        """S-002：原始页面无变化熔断 → NO_CHANGE + 零后续 LLM 调用。
 
-        AC-005/006/007: 无变化熔断（NO_CHANGE + 零 LLM diff 调用 + 4 字段空）
+        AC-005/006/007: 无变化熔断（NO_CHANGE + 零 LLM diff 调用）
         """
         mock_fetch.return_value = ("<html><body>content</body></html>", "line1\nline2\nline3")
+        self.mock_denoise.return_value = "new_llm_md_content_different"
         project = self._create_project(next_run_at=timezone.now() - timedelta(minutes=1))
 
-        # 创建上一条快照（内容相同 → diff 为空）
+        # 创建上一条快照（原始 Markdown 相同，但 LLM 输出不同）
         now = timezone.now()
-        prev_path = file_storage.save_llm_clean_md(project.id, "https://example.com", "llm_clean_md_content", now)
-        DataSnapshot.objects.create(
-            project=project,
-            source_url="https://example.com",
-            source_title="Example",
-            raw_html_path="/tmp/prev.html",
-            clean_md_path=prev_path,
+        self._create_prev_snapshot(
+            project,
+            raw_md="line1\nline2\nline3",
+            llm_md="old_llm_md_content",
             fetch_time=now - timedelta(hours=1),
         )
 
@@ -138,8 +169,8 @@ class LLMPipelineE2ETest(TestCase):
         # AC-006: 零 LLM diff 调用（judge_diff 未调用）
         self.mock_judge.assert_not_called()
 
-        # AC-007: 4 字段空
-        self.assertFalse(feed.change_summary)
+        # AC-007: 仅保留熔断说明，分析字段为空
+        self.assertIn("原始页面内容无变化", feed.change_summary)
         self.assertFalse(feed.strategic_intent)
         self.assertFalse(feed.action_suggestion)
         self.assertFalse(feed.evidence_diff)
@@ -156,21 +187,17 @@ class LLMPipelineE2ETest(TestCase):
 
         diff 非空但 LLM 判断为无意义变化（如排版调整），熔断。
         """
-        mock_fetch.return_value = ("<html><body>content</body></html>", "line1\nline2\nline3")
-        self.mock_denoise.return_value = "new_different_content"
+        mock_fetch.return_value = ("<html><body>content</body></html>", "new raw content")
         self.mock_judge.return_value = {"has_meaningful_change": False, "reason": "仅排版变化，无实质内容更新"}
 
         project = self._create_project(next_run_at=timezone.now() - timedelta(minutes=1))
 
-        # 创建上一条快照（不同内容 → diff 非空）
+        # 创建上一条快照（原始 Markdown 不同 → canonical diff 非空）
         now = timezone.now()
-        prev_path = file_storage.save_llm_clean_md(project.id, "https://example.com", "old_content", now)
-        DataSnapshot.objects.create(
-            project=project,
-            source_url="https://example.com",
-            source_title="Example",
-            raw_html_path="/tmp/prev.html",
-            clean_md_path=prev_path,
+        self._create_prev_snapshot(
+            project,
+            raw_md="old raw content",
+            llm_md="old_content",
             fetch_time=now - timedelta(hours=1),
         )
 
@@ -259,14 +286,13 @@ class LLMPipelineE2ETest(TestCase):
 
         # 创建旧格式快照（BS 版本，无 llm_ 前缀）
         now = timezone.now()
-        prev_bs_path = file_storage.save_clean_md(project.id, "https://example.com", "old_bs_md", now)
-        DataSnapshot.objects.create(
-            project=project,
-            source_url="https://example.com",
-            source_title="Example",
-            raw_html_path="/tmp/prev.html",
-            clean_md_path=prev_bs_path,  # 无 llm_ 前缀
+        self._create_prev_snapshot(
+            project,
+            raw_md="old_bs_md",
+            llm_md="old_bs_md",
             fetch_time=now - timedelta(hours=1),
+            legacy=True,
+            include_raw_md=False,
         )
 
         scheduler_service.run_scan()
@@ -289,20 +315,17 @@ class LLMPipelineE2ETest(TestCase):
 
         有历史快照 + diff 非空 + 有意义变化 → denoise + judge_diff + generate_intel 各调用 1 次。
         """
-        mock_fetch.return_value = ("<html><body>content</body></html>", "line1\nline2\nline3")
+        mock_fetch.return_value = ("<html><body>content</body></html>", "new raw content")
         self.mock_denoise.return_value = "new_different_content"
 
         project = self._create_project(next_run_at=timezone.now() - timedelta(minutes=1))
 
         # 创建上一条快照
         now = timezone.now()
-        prev_path = file_storage.save_llm_clean_md(project.id, "https://example.com", "old_content", now)
-        DataSnapshot.objects.create(
-            project=project,
-            source_url="https://example.com",
-            source_title="Example",
-            raw_html_path="/tmp/prev.html",
-            clean_md_path=prev_path,
+        self._create_prev_snapshot(
+            project,
+            raw_md="old raw content",
+            llm_md="old_content",
             fetch_time=now - timedelta(hours=1),
         )
 

@@ -147,7 +147,7 @@ class FeedChangeListSerializer(serializers.ModelSerializer):
 
     返回结构: {竞品名称, 变化的前后内容, 意图分析结果}
     - competitor_name: 项目名称（每个监控项目对应一组竞品）
-    - diff_text: difflib 原始 diff 文本（变化前后内容）
+    - diff_text: Firecrawl Markdown 经规则归一化后的稳定 diff
     - evidence_diff: LLM 提取的证据 diff
     - strategic_intent: LLM 意图分析结果
     """

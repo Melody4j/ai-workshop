@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import dj_database_url
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -13,9 +14,14 @@ SNAPSHOT_STORAGE_DIR = BASE_DIR.parent / "data"
 # 飞书卡片中跳转链接的站点基础 URL（开发环境默认 localhost:5173）
 SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "http://localhost:5173")
 
-SECRET_KEY = "dev-only-secret-key"
-DEBUG = True
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-secret-key")
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -60,10 +66,9 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": DATA_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.parse(
+        os.environ.get("DATABASE_URL", "sqlite:///backend/data/db.sqlite3")
+    )
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -147,3 +152,10 @@ LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "4096"))
 # Firecrawl 配置
 FIRECRAWL_API_KEY = os.environ.get("FIRECRAWL_API_KEY", "")
 FIRECRAWL_API_URL = os.environ.get("FIRECRAWL_API_URL", "https://api.firecrawl.dev")
+
+# Inngest 配置
+INNGEST_EVENT_KEY = os.environ.get("INNGEST_EVENT_KEY", "")
+INNGEST_SIGNING_KEY = os.environ.get("INNGEST_SIGNING_KEY", "")
+
+# Vercel Blob 配置
+BLOB_READ_WRITE_TOKEN = os.environ.get("BLOB_READ_WRITE_TOKEN", "")

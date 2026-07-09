@@ -186,6 +186,7 @@ status: draft
     - IntelResult Field description 与 prompt 字段描述对齐
     - negative few-shot 格式增强（_format_few_shots 输出完整错误报告）
     - 优化后重新上传 Blob
+    - 修复 CHANGED/ERROR_CRAWL 记录缺失 raw_diff_text 字段（scheduler_service.py 3 处 create 调用补传）
   - Out：
     - LLM temperature 差异化配置（转 V-005）
     - difflib 行级预过滤（转 V-006）
@@ -204,6 +205,7 @@ status: draft
   8. AC-008：_format_few_shots 输出包含完整错误报告（4-5 字段）而非仅摘要+评语
   9. AC-009：5 个优化后的 prompt 已上传至 Vercel Blob
   10. AC-010：现有测试 `apps.intelligence.tests` 全部通过
+  11. AC-011：所有 IntelligenceFeed.objects.create 调用都显式传入 raw_diff_text（CHANGED + NO_CHANGE + ERROR_CRAWL）
 
 - **交互变化结论**：无前端交互变化。本次为纯后端 prompt + 代码优化。
 
@@ -212,3 +214,4 @@ status: draft
   - `backend/apps/intelligence/services/llm_service.py`（denoise/judge_diff 调用方式）
   - `backend/apps/intelligence/services/llm_client.py`（IntelResult Field description + 新增 DiffJudgeResult）
   - `backend/apps/intelligence/services/prompt_optimizer_service.py`（_read_prompt_file 改 Blob 读取）
+  - `backend/apps/intelligence/services/scheduler_service.py`（3 处 create 调用补传 raw_diff_text）

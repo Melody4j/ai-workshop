@@ -347,3 +347,58 @@
 
 **步骤 3：提交（AUTO_COMMIT=true）**
 - Commit message: `chore: 上传优化后的 prompt 到 Blob，全量测试通过`
+
+---
+
+### Task T6: 修复 CHANGED/ERROR_CRAWL 记录缺失 raw_diff_text 字段
+
+- [ ] **状态**：未开始
+
+**文件：**
+- 修改：`backend/apps/intelligence/services/scheduler_service.py`（3 处 IntelligenceFeed.objects.create 调用）
+
+**验收点：**
+- 所有 IntelligenceFeed.objects.create 调用都显式传入 `raw_diff_text=raw_diff_text`
+- CHANGED 记录（~第 322 行）包含 `raw_diff_text`
+- ERROR_CRAWL 记录（~第 280 行 LLM diff 判断失败、~第 312 行 LLM 情报生成失败）包含 `raw_diff_text`
+
+**背景：**
+当前 `raw_diff_text` 仅在两个 NO_CHANGE 熔断路径中写入（第 263 行文本 diff 为空、第 290 行 LLM 判断无意义）。CHANGED 记录（第 322 行）和两个 ERROR_CRAWL 记录（第 280 行、第 312 行）创建时未传此字段，保持默认空字符串。这导致：
+- CHANGED 记录无法展示"LLM 降噪前的原始变化"（用户无法判断 LLM 降噪是否误杀内容）
+- ERROR_CRAWL 记录无法展示失败时的原始变化上下文
+
+`raw_diff_text` 变量在所有这些路径之前已计算（第 233 行 `raw_diff_text = _compute_raw_diff(snapshot, prev_snapshot)`），只需在 create 调用中补传即可。
+
+**步骤 1：补传 raw_diff_text 到 CHANGED 记录**
+- 修改点：`backend/apps/intelligence/services/scheduler_service.py`，~第 322 行
+- 在 `IntelligenceFeed.objects.create(...)` 调用中增加 `raw_diff_text=raw_diff_text,`
+- 改后：
+  ```python
+  feed = IntelligenceFeed.objects.create(
+      project=project,
+      job_status=IntelligenceFeed.JobStatus.CHANGED,
+      competitor_overview=intel_result.competitor_overview,
+      change_summary=intel_result.change_summary,
+      strategic_intent=intel_result.strategic_intent,
+      action_suggestion=intel_result.action_suggestion,
+      evidence_diff=intel_result.evidence_diff,
+      diff_text=diff_text,
+      raw_diff_text=raw_diff_text,
+      published_at=now,
+  )
+  ```
+
+**步骤 2：补传 raw_diff_text 到 ERROR_CRAWL 记录（LLM diff 判断失败）**
+- 修改点：`backend/apps/intelligence/services/scheduler_service.py`，~第 280 行
+- 在 `IntelligenceFeed.objects.create(...)` 调用中增加 `raw_diff_text=raw_diff_text,`
+
+**步骤 3：补传 raw_diff_text 到 ERROR_CRAWL 记录（LLM 情报生成失败）**
+- 修改点：`backend/apps/intelligence/services/scheduler_service.py`，~第 312 行
+- 在 `IntelligenceFeed.objects.create(...)` 调用中增加 `raw_diff_text=raw_diff_text,`
+
+**步骤 4：运行验证**
+- Run: `cd /Users/melody/code/ai-workshop/backend && /Users/melody/code/ai-workshop/.venv/bin/python manage.py test apps.intelligence.tests.test_scheduler_service`
+- Expected: PASS
+
+**步骤 5：提交（AUTO_COMMIT=true）**
+- Commit message: `fix: CHANGED/ERROR_CRAWL 记录补传 raw_diff_text 字段`

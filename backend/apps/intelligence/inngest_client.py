@@ -24,9 +24,9 @@ inngest_client = inngest.Inngest(
     fn_id="scheduled-scan",
     trigger=inngest.TriggerCron(cron="* * * * *"),
 )
-def scheduled_scan(ctx: inngest.ContextSync, step: inngest.StepSync) -> None:
+def scheduled_scan(ctx: inngest.ContextSync) -> None:
     """定时扫描：每分钟检查所有 active 项目是否到期，到期则执行扫描链路。"""
-    step.run(
+    ctx.step.run(
         "run_scan",
         lambda: _run_scan_wrapper(),
     )
@@ -42,7 +42,7 @@ def _run_scan_wrapper():
     fn_id="scan-project",
     trigger=inngest.TriggerEvent(event="app/scan.project"),
 )
-def scan_project(ctx: inngest.ContextSync, step: inngest.StepSync) -> None:
+def scan_project(ctx: inngest.ContextSync) -> None:
     """手动触发单个项目扫描。
 
     事件 data: {"project_id": int}
@@ -52,7 +52,7 @@ def scan_project(ctx: inngest.ContextSync, step: inngest.StepSync) -> None:
         logger.warning("[Inngest] scan-project 事件缺少 project_id")
         return
 
-    step.run(
+    ctx.step.run(
         f"scan-project-{project_id}",
         lambda: _run_scan_for_project_wrapper(project_id),
     )
@@ -68,7 +68,7 @@ def _run_scan_for_project_wrapper(project_id: int):
     fn_id="optimize-prompt",
     trigger=inngest.TriggerEvent(event="app/optimize.prompt"),
 )
-def optimize_prompt(ctx: inngest.ContextSync, step: inngest.StepSync) -> None:
+def optimize_prompt(ctx: inngest.ContextSync) -> None:
     """评分=-1 时触发 Prompt 优化。
 
     事件 data: {"feed_id": int}
@@ -78,7 +78,7 @@ def optimize_prompt(ctx: inngest.ContextSync, step: inngest.StepSync) -> None:
         logger.warning("[Inngest] optimize-prompt 事件缺少 feed_id")
         return
 
-    step.run(
+    ctx.step.run(
         f"optimize-prompt-{feed_id}",
         lambda: _optimize_prompts_wrapper(feed_id),
     )

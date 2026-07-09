@@ -519,7 +519,7 @@ status: draft
 
 ### Task T9: vercel.json 配置
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成
 
 **代码仓范围：** 根项目
 
@@ -558,19 +558,20 @@ status: draft
   ```
 
 **步骤 2：验证配置**
-- Run: `cd /Users/melody/code/ai-workshop-008 && npx vercel --dry-run`
-- Expected: 构建配置验证通过
+- Run: `cd /Users/melody/code/ai-workshop-008 && python3 -c "import json; json.load(open('vercel.json'))"`
+- Expected: JSON 格式校验通过 ✅（`vercel --dry-run` 已被 Vercel CLI 废弃，改用 JSON 校验 + 实际部署验证在 T11）
+- 补充：`excludeFiles` 增加了 `.env` / `.env.local` / `data/` 排除；`buildCommand` 增加 `pip install -r backend/requirements/base.txt`
 
 **步骤 3：提交**
 - Commit message: `新增 vercel.json 部署配置`
 - 审计信息：
-  - repo: `root`，branch: `008-vercel-deploy`，commit: `<TBD>`，changed_files: `vercel.json`
+  - repo: `root`，branch: `008-vercel-deploy`，commit: `d5453b9`，changed_files: `vercel.json`
 
 ---
 
 ### Task T10: GitHub Actions CI/CD
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成
 
 **代码仓范围：** 根项目
 
@@ -625,13 +626,14 @@ status: draft
 **步骤 2：提交**
 - Commit message: `新增 GitHub Actions CI/CD workflow（dev 分支部署到 Vercel）`
 - 审计信息：
-  - repo: `root`，branch: `008-vercel-deploy`，commit: `<TBD>`，changed_files: `.github/workflows/deploy-dev.yml`
+  - repo: `root`，branch: `008-vercel-deploy`，commit: `1af6824`，changed_files: `.github/workflows/deploy-dev.yml`
+  - 补充：新增 `workflow_dispatch` 手动触发、`manage.py check` 步骤、CI 环境变量（SQLite + 临时 SECRET_KEY）
 
 ---
 
 ### Task T11: Vercel 环境变量配置 + 部署验证
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（本地可自动化部分；Vercel Dashboard 配置 + push 部署验证需用户操作）
 
 **代码仓范围：** 无代码改动（Vercel Dashboard 操作）
 
@@ -674,6 +676,19 @@ status: draft
 - 在 Inngest Dashboard 注册 webhook URL，验证 Inngest 调用（V-010）
 
 **步骤 7：无代码提交（纯配置操作）**
+
+**执行结果与审计信息：**
+- 步骤 1-2（Vercel Dashboard 环境变量 + Postgres/Blob store）：**需用户操作**——环境变量清单见上方步骤 1
+- 步骤 3（migration 验证）：✅ 本地 Supabase Postgres 已验证，7 个 intelligence migration 全部成功（V-002）
+  - Run: `.venv/bin/python backend/manage.py showmigrations intelligence`
+  - 输出：`[X] 0001_initial` ~ `[X] 0007_datasnapshot_append_only_trigger` 全部 applied
+- 步骤 4（Prompt 初始化到 Blob）：✅ 本地已验证（V-007）
+  - Run: `.venv/bin/python backend/manage.py init_prompts_to_blob`
+  - 输出：5 套模板全部上传成功（denoise / diff_judge / intel_system / intel_user / prompt_optimizer）
+  - 修复：blob_storage.upload() 新增 `allow_overwrite` 参数，init 脚本和 save_prompt 均使用 `allow_overwrite=True`
+  - commit: `233c6ea`
+- 步骤 5-6（push 到 dev + Vercel 部署验证）：**需用户操作**——需在 Vercel Dashboard 配置完环境变量后执行
+  - 关键验证点：V-005（WSGI 冷启动）、V-008（CI/CD 部署）、V-010（Deployment Protection）
 
 ---
 

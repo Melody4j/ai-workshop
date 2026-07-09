@@ -1,6 +1,4 @@
 import logging
-import os
-import threading
 
 from django.db.models import QuerySet
 from django.http import FileResponse, Http404, HttpResponse
@@ -9,6 +7,9 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+import inngest
+
+from .inngest_client import inngest_client
 from .models import IntelligenceFeed, MonitorProject
 from .serializers import (
     IntelligenceFeedDetailSerializer,
@@ -19,24 +20,6 @@ from .serializers import (
 from .services import feishu_service
 
 logger = logging.getLogger(__name__)
-
-
-def _async_optimize_prompts(feed_id: int) -> None:
-    """在后台线程中执行 prompt 优化，异常仅记录日志。"""
-    try:
-        from .services.prompt_optimizer_service import optimize_prompts
-        optimize_prompts(feed_id)
-    except Exception as e:
-        logger.error(f"[Prompt优化] feed={feed_id} 异步优化失败: {e}", exc_info=True)
-
-
-def _async_run_scan(project_id: int) -> None:
-    """在后台线程中执行手动扫描，异常仅记录日志。"""
-    try:
-        from .services.scheduler_service import run_scan_for_project
-        run_scan_for_project(project_id)
-    except Exception as e:
-        logger.error(f"[手动执行] project={project_id} 异步执行失败: {e}", exc_info=True)
 
 
 class ProjectListCreateView(generics.ListCreateAPIView):
@@ -59,7 +42,7 @@ class ProjectExecuteView(APIView):
     """手动触发项目扫描。
 
     POST /api/projects/{id}/execute
-    异步启动后台线程执行扫描（采集 → LLM → 报告 → 推送），立即返回 202。
+    通过 Inngest 事件触发异步扫描（采集 → LLM → 报告 → 推送），立即返回 202。
     """
 
     permission_classes = [AllowAny]
@@ -70,12 +53,12 @@ class ProjectExecuteView(APIView):
         except MonitorProject.DoesNotExist:
             raise Http404
 
-        thread = threading.Thread(
-            target=_async_run_scan,
-            args=(pk,),
-            daemon=True,
+        inngest_client.send_sync(
+            inngest.Event(
+                name="app/scan.project",
+                data={"project_id": pk},
+            )
         )
-        thread.start()
 
         return Response(
             {"detail": "任务已开始执行", "project_id": pk},
@@ -127,14 +110,14 @@ class ReportRatingView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        # 评分=-1 时异步触发 prompt 优化
+        # 评分=-1 时通过 Inngest 事件触发 prompt 优化
         if feed.user_feedback == -1:
-            thread = threading.Thread(
-                target=_async_optimize_prompts,
-                args=(feed.pk,),
-                daemon=True,
+            inngest_client.send_sync(
+                inngest.Event(
+                    name="app/optimize.prompt",
+                    data={"feed_id": feed.pk},
+                )
             )
-            thread.start()
 
         return Response(IntelligenceFeedDetailSerializer(feed).data, status=status.HTTP_200_OK)
 
@@ -144,14 +127,14 @@ class ReportRatingView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        # 评分=-1 时异步触发 prompt 优化
+        # 评分=-1 时通过 Inngest 事件触发 prompt 优化
         if feed.user_feedback == -1:
-            thread = threading.Thread(
-                target=_async_optimize_prompts,
-                args=(feed.pk,),
-                daemon=True,
+            inngest_client.send_sync(
+                inngest.Event(
+                    name="app/optimize.prompt",
+                    data={"feed_id": feed.pk},
+                )
             )
-            thread.start()
 
         return Response(IntelligenceFeedDetailSerializer(feed).data, status=status.HTTP_200_OK)
 

@@ -117,6 +117,7 @@ def read_content(blob_url: str) -> str:
     """从 Blob URL 读取文件内容。
 
     公共 store 的 Blob URL 可直接通过 HTTP GET 访问，无需认证。
+    使用标准库 urllib 替代 requests，避免 Vercel Serverless 环境中的依赖问题。
 
     Args:
         blob_url: Blob URL
@@ -124,10 +125,10 @@ def read_content(blob_url: str) -> str:
     Returns:
         文件内容字符串
     """
-    response = requests.get(blob_url, timeout=30)
-    response.raise_for_status()
-    response.encoding = response.apparent_encoding or "utf-8"
-    return response.text
+    import urllib.request
+
+    with urllib.request.urlopen(blob_url, timeout=30) as response:
+        return response.read().decode("utf-8")
 
 
 def delete(blob_url: str) -> None:

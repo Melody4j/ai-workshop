@@ -125,6 +125,7 @@ class IntelligenceFeedDetailSerializer(serializers.ModelSerializer):
             "project",
             "job_status",
             "push_status",
+            "competitor_overview",
             "change_summary",
             "strategic_intent",
             "action_suggestion",

@@ -22,6 +22,8 @@ export interface ReportDetail {
   strategic_intent: string
   action_suggestion: string
   evidence_diff: string
+  diff_text: string
+  raw_diff_text: string
   user_feedback: number | null
   user_comment: string
   html_report_path: string

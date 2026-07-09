@@ -130,6 +130,8 @@ class IntelligenceFeedDetailSerializer(serializers.ModelSerializer):
             "strategic_intent",
             "action_suggestion",
             "evidence_diff",
+            "diff_text",
+            "raw_diff_text",
             "user_feedback",
             "user_comment",
             "html_report_path",

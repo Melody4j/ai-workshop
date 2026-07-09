@@ -143,6 +143,31 @@ def _get_competitor_context(project, index: int) -> str:
     return "暂无竞品补充文档"
 
 
+def _compute_raw_diff(current_snapshot, prev_snapshot) -> str:
+    """计算 Firecrawl 降噪前 MD 的 diff（当前快照 vs 上一条快照）。
+
+    用于 NO_CHANGE 时展示"LLM 降噪前的原始变化"，帮助用户判断 LLM 是否误杀。
+
+    Args:
+        current_snapshot: 当前 DataSnapshot
+        prev_snapshot: 上一条 DataSnapshot（可能为 None）
+
+    Returns:
+        unified diff 字符串；无上一条或读取失败返回空字符串
+    """
+    if not prev_snapshot or not prev_snapshot.raw_md_path or not current_snapshot.raw_md_path:
+        return ""
+
+    try:
+        from apps.intelligence.services import blob_storage
+        prev_raw = blob_storage.read_content(prev_snapshot.raw_md_path)
+        curr_raw = blob_storage.read_content(current_snapshot.raw_md_path)
+        return diff_service.text_diff(curr_raw, prev_raw)
+    except Exception as e:
+        logger.warning(f"[计算原始 diff 失败] {e}")
+        return ""
+
+
 def _process_url(project, url, title, now, crawl_hint="", competitor_context=""):
     """处理单个 URL 的完整链路：采集 → LLM降噪 → diff熔断 → 情报生成 → 入库+报告。
 
@@ -167,9 +192,9 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
         logger.warning(f"[采集失败] {url} → ERROR_CRAWL")
         return
 
-    # === Step 2: 保存原始 HTML 和 BS 清洗 MD（BS 版本仅存文件，不入 DB）===
+    # === Step 2: 保存原始 HTML 和 Firecrawl 清洗 MD（Firecrawl 版本存 raw_md_path）===
     raw_html_path = file_storage.save_raw_html(project.id, url, raw_md, now)
-    file_storage.save_clean_md(project.id, url, clean_md, now)
+    raw_md_path = file_storage.save_clean_md(project.id, url, clean_md, now)
 
     # === Step 3: LLM 语义降噪（第 1 次 LLM 调用）===
     try:
@@ -193,6 +218,7 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
         source_title=title,
         raw_html_path=raw_html_path,
         clean_md_path=llm_clean_md_path,
+        raw_md_path=raw_md_path,
         fetch_time=now,
     )
     logger.info(f"[入库] 快照已保存: {url} (clean_md_path → LLM 版本)")
@@ -202,6 +228,9 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
         project=project,
         source_url=url,
     ).exclude(pk=snapshot.pk).first()
+
+    # 计算 Firecrawl 降噪前 MD 的 diff（用于 NO_CHANGE 时展示原始变化）
+    raw_diff_text = _compute_raw_diff(snapshot, prev_snapshot)
 
     diff_text = ""
     skip_diff = False
@@ -234,7 +263,9 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
                 IntelligenceFeed.objects.create(
                     project=project,
                     job_status=IntelligenceFeed.JobStatus.NO_CHANGE,
+                    change_summary="LLM 降噪后内容无变化",
                     diff_text="",
+                    raw_diff_text=raw_diff_text,
                     published_at=now,
                 )
                 logger.info(f"[熔断] {url} 文本 diff 为空 → NO_CHANGE")
@@ -261,6 +292,7 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
                 job_status=IntelligenceFeed.JobStatus.NO_CHANGE,
                 change_summary=judge_result.get("reason", "LLM 判断无意义变化"),
                 diff_text=diff_text,
+                raw_diff_text=raw_diff_text,
                 published_at=now,
             )
             logger.info(f"[熔断] {url} LLM 判断无意义变化 → NO_CHANGE")

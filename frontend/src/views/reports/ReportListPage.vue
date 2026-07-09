@@ -18,6 +18,19 @@ const statusLabel = {
   NO_CHANGE: "无变更",
   ERROR_CRAWL: "执行失败",
 } as const
+
+const statusTagType = {
+  CHANGED: "success" as const,
+  NO_CHANGE: "info" as const,
+  ERROR_CRAWL: "danger" as const,
+}
+
+function displaySummary(row: ReportSummary): string {
+  if (row.change_summary) return row.change_summary
+  if (row.job_status === "NO_CHANGE") return "LLM 降噪后内容无变化"
+  if (row.job_status === "ERROR_CRAWL") return "采集或处理异常"
+  return "—"
+}
 const selectedProjectId = computed(() => String(route.query.project ?? ""))
 const selectedProject = computed(() =>
   projects.value.find((project) => String(project.id) === selectedProjectId.value) ?? null,
@@ -105,11 +118,17 @@ watch(selectedProjectId, async (next, previous) => {
 
         <el-table-column label="执行情况" min-width="120">
           <template #default="{ row }">
-            <el-tag effect="plain" round>{{ statusLabel[row.job_status] }}</el-tag>
+            <el-tag :type="statusTagType[row.job_status]" effect="plain" round>
+              {{ statusLabel[row.job_status] }}
+            </el-tag>
           </template>
         </el-table-column>
 
-        <el-table-column label="变化摘要" min-width="320" prop="change_summary" />
+        <el-table-column label="变化摘要" min-width="320">
+          <template #default="{ row }">
+            {{ displaySummary(row) }}
+          </template>
+        </el-table-column>
 
         <el-table-column label="评分" min-width="120">
           <template #default="{ row }">
@@ -126,14 +145,12 @@ watch(selectedProjectId, async (next, previous) => {
         <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
             <el-button
-              v-if="row.job_status === 'CHANGED'"
               type="primary"
               link
               @click="router.push(`/monitoring/${row.id}`)"
             >
               查看详情
             </el-button>
-            <span v-else class="table-placeholder">-</span>
           </template>
         </el-table-column>
       </el-table>

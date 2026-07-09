@@ -52,6 +52,7 @@ class DataSnapshot(TimestampedModel):
     source_url = models.URLField()
     raw_html_path = models.CharField(max_length=512, blank=True)
     clean_md_path = models.CharField(max_length=512, blank=True)
+    raw_md_path = models.CharField(max_length=512, blank=True, default="")
     fetch_time = models.DateTimeField(default=timezone.now)
 
     class Meta:
@@ -97,6 +98,7 @@ class IntelligenceFeed(TimestampedModel):
     html_report_path = models.CharField(max_length=255, blank=True)
     md_table_path = models.CharField(max_length=255, blank=True)
     diff_text = models.TextField(blank=True, default="")
+    raw_diff_text = models.TextField(blank=True, default="")
     published_at = models.DateTimeField(default=timezone.now)
 
     class Meta:

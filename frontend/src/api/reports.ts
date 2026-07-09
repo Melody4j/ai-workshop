@@ -73,3 +73,14 @@ export function updateRating(
 export function clearRating(id: number): Promise<void> {
   return deleteJson(`/api/reports/${id}/rating`)
 }
+
+export function downloadReportMd(id: number): Promise<Blob> {
+  return fetch(`/api/feeds/${id}/download_md`).then((res) => {
+    if (!res.ok) throw new Error("MD 下载失败")
+    return res.blob()
+  })
+}
+
+export function getReportHtmlPreviewUrl(id: number): string {
+  return `/api/feeds/${id}/preview_html`
+}

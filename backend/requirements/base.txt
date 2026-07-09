@@ -1,4 +1,4 @@
-Django>=4.2,<4.3
+Django>=5.0,<5.1
 djangorestframework>=3.15,<3.16
 django-apscheduler>=0.7.0,<0.8.0
 croniter>=2.0.0,<3.0.0

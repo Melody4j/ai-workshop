@@ -32,7 +32,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "apps.intelligence",
-    "django_apscheduler",
 ]
 
 MIDDLEWARE = [
@@ -100,9 +99,6 @@ REST_FRAMEWORK = {
     ],
 }
 
-# django-apscheduler 配置
-APSCHEDULER_RUN_NOW_TIMEOUT = 25  # seconds
-
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -125,13 +121,8 @@ LOGGING = {
             "handlers": ["console"],
             "propagate": False,
         },
-        "apscheduler": {
-            "level": "WARNING",
-            "handlers": ["console"],
-            "propagate": False,
-        },
-        "django_apscheduler": {
-            "level": "WARNING",
+        "inngest": {
+            "level": "INFO",
             "handlers": ["console"],
             "propagate": False,
         },

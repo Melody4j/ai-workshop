@@ -51,6 +51,10 @@ export function disableProject(id: number): Promise<void> {
   return deleteJson(`/api/projects/${id}`)
 }
 
+export function toggleProjectActive(id: number, is_active: boolean): Promise<Project> {
+  return patchJson<Project>(`/api/projects/${id}`, { is_active })
+}
+
 export function executeProject(id: number): Promise<{ detail: string; project_id: number }> {
   return postJson<{ detail: string; project_id: number }>(`/api/projects/${id}/execute`, {})
 }

@@ -2,6 +2,8 @@ import logging
 
 from django.db.models import QuerySet
 from django.http import Http404, HttpResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -197,6 +199,7 @@ class FeedDownloadMdView(APIView):
         return response
 
 
+@method_decorator(xframe_options_exempt, name="dispatch")
 class FeedHtmlPreviewView(APIView):
     """在线预览 HTML 报告（从 Vercel Blob 读取，inline 返回）。
 

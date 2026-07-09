@@ -3,13 +3,14 @@ import { computed, onMounted, ref } from "vue"
 import { ElMessage } from "element-plus"
 import { useRouter } from "vue-router"
 
-import { disableProject, executeProject, listProjects, type Project } from "../../api/projects"
+import { executeProject, listProjects, toggleProjectActive, type Project } from "../../api/projects"
 import { cron2label, getNextRuns, toQuartzCron } from "../../components/cron/cron-utils"
 
 const router = useRouter()
 const projects = ref<Project[]>([])
 const loading = ref(false)
 const executingId = ref<number | null>(null)
+const togglingId = ref<number | null>(null)
 
 const projectNextRuns = computed(() => {
   const map: Record<number, string[]> = {}
@@ -43,13 +44,17 @@ async function loadProjects() {
   }
 }
 
-async function archiveProject(id: number) {
+async function toggleProjectActiveHandler(project: Project) {
+  togglingId.value = project.id
+  const newActive = !project.is_active
   try {
-    await disableProject(id)
-    ElMessage.success("任务已停用。")
+    await toggleProjectActive(project.id, newActive)
+    ElMessage.success(newActive ? "任务已启用。" : "任务已停用。")
     await loadProjects()
   } catch (err) {
-    ElMessage.error(err instanceof Error ? err.message : "任务停用失败。")
+    ElMessage.error(err instanceof Error ? err.message : "操作失败。")
+  } finally {
+    togglingId.value = null
   }
 }
 
@@ -95,9 +100,16 @@ onMounted(loadProjects)
             <p class="page-kicker">任务 #{{ project.id }}</p>
             <h3>{{ project.project_name }}</h3>
           </div>
-          <el-tag :type="project.is_active ? 'info' : 'default'" effect="plain" round>
-            {{ project.is_active ? "已启用" : "已停用" }}
-          </el-tag>
+          <div class="action-row">
+            <el-switch
+              :model-value="project.is_active"
+              :loading="togglingId === project.id"
+              active-text="启用"
+              inactive-text="停用"
+              inline-prompt
+              @change="toggleProjectActiveHandler(project)"
+            />
+          </div>
         </div>
 
         <dl class="meta-grid">
@@ -138,13 +150,6 @@ onMounted(loadProjects)
           <el-button @click="router.push(`/projects/${project.id}/edit`)">编辑</el-button>
           <el-button text @click="router.push(`/monitoring?project=${project.id}`)">
             查看监控
-          </el-button>
-          <el-button
-            text
-            :disabled="!project.is_active"
-            @click="archiveProject(project.id)"
-          >
-            停用任务
           </el-button>
         </div>
       </el-card>

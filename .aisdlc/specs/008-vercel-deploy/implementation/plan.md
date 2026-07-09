@@ -576,16 +576,16 @@ status: draft
 **代码仓范围：** 根项目
 
 **文件：**
-- 创建：`.github/workflows/deploy-dev.yml`
+- 创建：`.github/workflows/deploy.yml`
 
 **验收点：**
-- push 到 dev 分支触发 workflow（V-008）
+- push 到 main 分支触发 workflow（V-008）
 - Django 测试步骤通过
 - 前端构建步骤通过
 - Vercel CLI 部署步骤通过
 
 **步骤 1：创建 GitHub Actions workflow**
-- 创建：`.github/workflows/deploy-dev.yml`
+- 创建：`.github/workflows/deploy.yml`
 - 内容：
   ```yaml
   name: Deploy to Vercel (dev)
@@ -624,10 +624,10 @@ status: draft
   ```
 
 **步骤 2：提交**
-- Commit message: `新增 GitHub Actions CI/CD workflow（dev 分支部署到 Vercel）`
+- Commit message: `CI/CD 触发条件改为合并到 main 时部署`
 - 审计信息：
-  - repo: `root`，branch: `008-vercel-deploy`，commit: `1af6824`，changed_files: `.github/workflows/deploy-dev.yml`
-  - 补充：新增 `workflow_dispatch` 手动触发、`manage.py check` 步骤、CI 环境变量（SQLite + 临时 SECRET_KEY）
+  - repo: `root`，branch: `008-vercel-deploy`，commit: `a778523`，changed_files: `.github/workflows/deploy.yml`
+  - 补充：触发条件改为 push 到 main（合并到 main 才部署生产），文件名从 deploy-dev.yml 改为 deploy.yml，保留 workflow_dispatch 手动触发
 
 ---
 
@@ -667,8 +667,8 @@ status: draft
 - Run: `cd /Users/melody/code/ai-workshop-008 && BLOB_READ_WRITE_TOKEN=<token> .venv/bin/python backend/manage.py init_prompts_to_blob`
 - Expected: 4 套模板上传成功（V-007）
 
-**步骤 5：push 到 dev 触发 CI/CD**
-- Run: `git push origin dev`
+**步骤 5：合并到 main 触发 CI/CD**
+- Run: `git push origin main`
 - Expected: GitHub Actions 成功，Vercel 部署成功（V-008）
 
 **步骤 6：验证部署**
@@ -687,7 +687,7 @@ status: draft
   - 输出：5 套模板全部上传成功（denoise / diff_judge / intel_system / intel_user / prompt_optimizer）
   - 修复：blob_storage.upload() 新增 `allow_overwrite` 参数，init 脚本和 save_prompt 均使用 `allow_overwrite=True`
   - commit: `233c6ea`
-- 步骤 5-6（push 到 dev + Vercel 部署验证）：**需用户操作**——需在 Vercel Dashboard 配置完环境变量后执行
+- 步骤 5-6（合并到 main + Vercel 部署验证）：**需用户操作**——需在 Vercel Dashboard 配置完环境变量后执行
   - 关键验证点：V-005（WSGI 冷启动）、V-008（CI/CD 部署）、V-010（Deployment Protection）
 
 ---

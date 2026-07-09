@@ -190,28 +190,32 @@ def generate_intel(
     diff_text: str,
     self_product_doc: str,
     few_shots: list,
+    competitor_context: str = "",
 ) -> IntelResult:
-    """LLM 情报生成：instructor + Pydantic 结构化输出 4 字段。
+    """LLM 情报生成：instructor + Pydantic 结构化输出 5 字段。
 
     Args:
         diff_text: 有意义的 diff 片段
         self_product_doc: 我方产品锚定文档
         few_shots: Negative Few-Shot 列表（IntelligenceFeed 对象列表）
+        competitor_context: 竞品补充文档文本（已格式化）
 
     Returns:
-        IntelResult 实例（4 字段：change_summary / strategic_intent / action_suggestion / evidence_diff）
+        IntelResult 实例（5 字段：competitor_overview / change_summary / strategic_intent / action_suggestion / evidence_diff）
 
     Raises:
         LLMError: 重试耗尽后抛出
     """
     doc_context = self_product_doc if self_product_doc and self_product_doc.strip() else "（暂无产品锚定文档）"
     few_shots_text = _format_few_shots(few_shots)
+    ctx = competitor_context if competitor_context and competitor_context.strip() else "暂无竞品补充文档"
 
     system_prompt = load_prompt("intel_system", self_product_doc=doc_context)
     user_prompt = load_prompt(
         "intel_user",
         diff_text=diff_text,
         negative_few_shots=few_shots_text,
+        competitor_context=ctx,
     )
 
     client = get_instructor_client()

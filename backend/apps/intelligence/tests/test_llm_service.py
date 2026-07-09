@@ -134,6 +134,7 @@ class GenerateIntelServiceTest(SimpleTestCase):
         from apps.intelligence.services.llm_client import IntelResult
 
         expected = IntelResult(
+            competitor_overview="竞品A是AI设计工具",
             change_summary="竞品新增AI绘图功能",
             strategic_intent="拓展AI创作赛道",
             action_suggestion="评估我方是否跟进AI绘图",

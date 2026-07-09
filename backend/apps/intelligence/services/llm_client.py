@@ -17,8 +17,12 @@ logger = logging.getLogger(__name__)
 
 
 class IntelResult(BaseModel):
-    """情报生成结果 Pydantic schema（4 字段，instructor 约束）。"""
+    """情报生成结果 Pydantic schema（5 字段，instructor 约束）。"""
 
+    competitor_overview: str = Field(
+        ...,
+        description="竞品整体定位与背景概述，基于补充文档和 diff 综合分析",
+    )
     change_summary: str = Field(
         ...,
         description="竞品变化的简要摘要，1-3句话，说明发生了什么变化",

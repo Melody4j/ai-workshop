@@ -158,88 +158,90 @@ status: draft
 
 ### Task T1: Django 4.2 → 5.0+ 升级
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成
 
 **代码仓范围：** 根项目
 
 **文件：**
 - 修改：`backend/requirements/base.txt`（Django 版本约束）
-- 修改：可能涉及 settings.py / urls.py / 模型 / 模板的 deprecation 修复
 
 **验收点：**
-- Django 版本 >= 5.0
-- 全部测试通过
+- Django 版本 >= 5.0 ✅（5.0.14）
+- 全部测试通过 ✅（项目无测试用例，0 tests passed）
 
 **步骤 1：升级 Django 版本**
 - 修改点：`backend/requirements/base.txt`，将 `Django>=4.2,<4.3` 改为 `Django>=5.0,<5.1`
-- Run: `cd /Users/melody/code/ai-workshop-008 && .venv/bin/pip install -r backend/requirements/base.txt`
-- Expected: 安装成功，无冲突
+- Run: `cd /Users/melody/code/ai-workshop-008 && .venv/bin/python -m pip install -r backend/requirements/base.txt --no-user`
+- Expected: 安装成功，无冲突 ✅（Django 5.0.14 安装成功）
 
 **步骤 2：运行测试检查 breaking changes**
 - Run: `cd /Users/melody/code/ai-workshop-008 && .venv/bin/python backend/manage.py test --verbosity=2`
-- Expected: 全部测试通过。如有失败，修复 breaking changes（如 USE_L10N 移除、DEFAULT_FILE_STORAGE 改名等）
+- Expected: 全部测试通过 ✅（项目无测试用例，Ran 0 tests）
 
 **步骤 3：运行 Django check**
 - Run: `cd /Users/melody/code/ai-workshop-008 && .venv/bin/python backend/manage.py check`
-- Expected: 无 warning/error
+- Expected: 无 warning/error ✅（System check identified no issues）
 
 **步骤 4：提交**
 - Commit message: `升级 Django 到 5.0+，修复 breaking changes`
 - 审计信息：
-  - repo: `root`，branch: `008-vercel-deploy`，commit: `<TBD>`，changed_files: `backend/requirements/base.txt` + 其他修复文件
+  - repo: `root`，branch: `008-vercel-deploy`，commit: `fe2fa59`，changed_files: `backend/requirements/base.txt`
+  - V-009 验证通过：Django 5.0.14 兼容性确认
 
 ---
 
 ### Task T2: settings.py 环境变量化
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成
 
 **代码仓范围：** 根项目
 
 **文件：**
 - 修改：`backend/config/settings.py`
+- 修改：`backend/requirements/base.txt`
 - 修改：`backend/.env.example`
 
 **验收点：**
-- SECRET_KEY 从 `DJANGO_SECRET_KEY` 环境变量读取
-- DEBUG 从 `DEBUG` 环境变量读取（默认 False）
-- ALLOWED_HOSTS 从 `ALLOWED_HOSTS` 环境变量读取（支持逗号分隔）
-- CSRF_TRUSTED_ORIGINS 配置支持 Vercel 域名
-- DATABASES 从 `DATABASE_URL` 环境变量读取（通过 dj-database-url）
-- 所有 LLM/Firecrawl/SITE_BASE_URL 保持不变（已从环境变量读取）
-- 新增 Inngest/Blob 环境变量占位
+- SECRET_KEY 从 `DJANGO_SECRET_KEY` 环境变量读取 ✅
+- DEBUG 从 `DEBUG` 环境变量读取（默认 False） ✅
+- ALLOWED_HOSTS 从 `ALLOWED_HOSTS` 环境变量读取（支持逗号分隔） ✅
+- CSRF_TRUSTED_ORIGINS 配置支持 Vercel 域名 ✅
+- DATABASES 从 `DATABASE_URL` 环境变量读取（通过 dj-database-url） ✅
+- 所有 LLM/Firecrawl/SITE_BASE_URL 保持不变 ✅
+- 新增 Inngest/Blob 环境变量占位 ✅
 
 **步骤 1：安装新依赖**
 - 修改点：`backend/requirements/base.txt`，新增 `dj-database-url>=2.0`、`psycopg2-binary>=2.9`
-- Run: `cd /Users/melody/code/ai-workshop-008 && .venv/bin/pip install dj-database-url psycopg2-binary`
+- Run: `cd /Users/melody/code/ai-workshop-008 && .venv/bin/python -m pip install dj-database-url psycopg2-binary --no-user`
+- Expected: 安装成功 ✅（dj-database-url 3.1.2 + psycopg2-binary 2.9.12）
 
 **步骤 2：修改 settings.py**
 - 修改点：`backend/config/settings.py`
-  - `SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-secret-key")`
-  - `DEBUG = os.environ.get("DEBUG", "False").lower() == "true"`
-  - `ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")`
-  - `CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if os.environ.get("CSRF_TRUSTED_ORIGINS") else []`
-  - `DATABASES = {"default": dj_database_url.parse(os.environ.get("DATABASE_URL", "sqlite:///backend/data/db.sqlite3"))}`
-  - 新增 `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY` / `BLOB_READ_WRITE_TOKEN` 读取
-  - `load_dotenv` 保持（本地开发兼容）
+  - SECRET_KEY / DEBUG / ALLOWED_HOSTS / CSRF_TRUSTED_ORIGINS 环境变量化 ✅
+  - DATABASES 通过 dj_database_url.parse 解析 ✅
+  - 新增 INNGEST_EVENT_KEY / INNGEST_SIGNING_KEY / BLOB_READ_WRITE_TOKEN ✅
+  - load_dotenv 保持（本地开发兼容） ✅
 
 **步骤 3：更新 .env.example**
-- 修改点：`backend/.env.example`，补充完整环境变量模板
+- 修改点：`backend/.env.example`，补充完整环境变量模板 ✅
 
 **步骤 4：运行测试验证**
+- Run: `cd /Users/melody/code/ai-workshop-008 && .venv/bin/python backend/manage.py check`
+- Expected: 通过 ✅（System check identified no issues）
 - Run: `cd /Users/melody/code/ai-workshop-008 && .venv/bin/python backend/manage.py test --verbosity=2`
-- Expected: 全部通过
+- Expected: 全部通过 ✅（Ran 0 tests）
 
 **步骤 5：提交**
 - Commit message: `settings.py 环境变量化，支持 Vercel 部署配置`
 - 审计信息：
-  - repo: `root`，branch: `008-vercel-deploy`，commit: `<TBD>`，changed_files: `backend/config/settings.py`、`backend/requirements/base.txt`、`backend/.env.example`
+  - repo: `root`，branch: `008-vercel-deploy`，commit: `20e68bc`，changed_files: `backend/config/settings.py`、`backend/requirements/base.txt`、`backend/.env.example`
+  - 本地 .env 配置 Supabase Postgres 非池化 URL（gitignored）
 
 ---
 
 ### Task T3: Postgres migration 验证 + append-only 触发器
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成
 
 **代码仓范围：** 根项目
 
@@ -247,45 +249,37 @@ status: draft
 - 创建：`backend/apps/intelligence/migrations/0007_datasnapshot_append_only_trigger.py`
 
 **验收点：**
-- 6 个现有 migration 在 Postgres 上全部成功（V-002）
-- DataSnapshot UPDATE/DELETE 被 Postgres 触发器 RAISE(EXCEPTION) 阻止（V-006）
+- 6 个现有 migration 在 Postgres 上全部成功（V-002） ✅
+- DataSnapshot UPDATE/DELETE 被 Postgres 触发器 RAISE(EXCEPTION) 阻止（V-006） ✅
 
 **步骤 1：在 Postgres 上运行现有 migration**
-- 前提：`DATABASE_URL` 指向 Postgres 实例
+- 前提：`DATABASE_URL` 指向 Supabase Postgres（非池化 URL）
 - Run: `cd /Users/melody/code/ai-workshop-008 && .venv/bin/python backend/manage.py migrate`
-- Expected: 6 条 migration 全部成功
+- Expected: 全部 migration 成功 ✅（6 个 intelligence + django 内置 + django_apscheduler 全部 OK）
 
 **步骤 2：创建 append-only 触发器 migration**
 - 创建：`backend/apps/intelligence/migrations/0007_datasnapshot_append_only_trigger.py`
-- 内容：`RunSQL` 创建 Postgres 触发器（PL/pgSQL），禁止 DataSnapshot 表的 UPDATE 和 DELETE
-- SQL 示例：
-  ```sql
-  CREATE OR REPLACE FUNCTION prevent_datasnapshot_modify() RETURNS trigger AS $$
-  BEGIN
-    RAISE EXCEPTION 'DataSnapshot is append-only: UPDATE/DELETE not allowed';
-  END;
-  $$ LANGUAGE plpgsql;
-  CREATE TRIGGER no_update_datasnapshot BEFORE UPDATE ON intelligence_datasnapshot FOR EACH ROW EXECUTE FUNCTION prevent_datasnapshot_modify();
-  CREATE TRIGGER no_delete_datasnapshot BEFORE DELETE ON intelligence_datasnapshot FOR EACH ROW EXECUTE FUNCTION prevent_datasnapshot_modify();
-  ```
-- 回滚 SQL：`DROP TRIGGER IF EXISTS no_update_datasnapshot ON intelligence_datasnapshot; DROP TRIGGER IF EXISTS no_delete_datasnapshot ON intelligence_datasnapshot; DROP FUNCTION IF EXISTS prevent_datasnapshot_modify();`
+- 内容：RunSQL 创建 PL/pgSQL 函数 + UPDATE/DELETE 触发器 ✅
 
 **步骤 3：运行新 migration**
-- Run: `cd /Users/melody/code/ai-workshop-008 && .venv/bin/python backend/manage.py migrate`
-- Expected: 0007 migration 成功
+- Run: `cd /Users/melody/code/ai-workshop-008 && .venv/bin/python backend/manage.py migrate intelligence 0007`
+- Expected: 0007 migration 成功 ✅
 
 **步骤 4：测试触发器**
-- Run: Django shell 中尝试 UPDATE/DELETE DataSnapshot
-- Expected: RAISE(EXCEPTION) 阻止操作
+- Run: Django shell 创建测试快照 → 尝试 UPDATE/DELETE
+- Expected: RAISE(EXCEPTION) 阻止操作 ✅
+  - UPDATE blocked: "DataSnapshot is append-only: UPDATE/DELETE not allowed"
+  - DELETE blocked: "DataSnapshot is append-only: UPDATE/DELETE not allowed"
 
 **步骤 5：运行测试**
 - Run: `cd /Users/melody/code/ai-workshop-008 && .venv/bin/python backend/manage.py test --verbosity=2`
-- Expected: 全部通过（注意：测试中如有 DataSnapshot UPDATE/DELETE 操作需适配）
+- Expected: 全部通过 ✅（Ran 0 tests，项目无测试用例）
 
 **步骤 6：提交**
 - Commit message: `新增 DataSnapshot append-only Postgres 触发器 migration`
 - 审计信息：
-  - repo: `root`，branch: `008-vercel-deploy`，commit: `<TBD>`，changed_files: `backend/apps/intelligence/migrations/0007_datasnapshot_append_only_trigger.py`
+  - repo: `root`，branch: `008-vercel-deploy`，commit: `f974ae3`，changed_files: `backend/apps/intelligence/migrations/0007_datasnapshot_append_only_trigger.py`
+  - V-002 验证通过 / V-006 验证通过
 
 ---
 

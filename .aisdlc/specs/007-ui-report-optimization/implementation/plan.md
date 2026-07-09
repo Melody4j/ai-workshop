@@ -1,6 +1,6 @@
 ---
 title: I1 Implementation Plan（SSOT）
-status: draft
+status: done
 ---
 
 # 前端报告与任务管理优化 实现计划（SSOT）
@@ -105,7 +105,7 @@ status: draft
 
 ### Task T1: 前端 API 层新增辅助函数
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（commit `1ff903e`）
 
 **代码仓范围：**
 - 根项目：`/Users/melody/code/ai-workshop-007`
@@ -152,7 +152,7 @@ export function getReportHtmlPreviewUrl(id: number): string {
 - 审计信息：
   - repo: `root`
     branch: `007-ui-report-optimization`
-    commit: `<TBD>`
+    commit: `1ff903e`
     pr: `<TBD>`
     changed_files:
       - `frontend/src/api/projects.ts`
@@ -162,7 +162,7 @@ export function getReportHtmlPreviewUrl(id: number): string {
 
 ### Task T2: ReportDetailPage.vue 改造（删 PDF + 加 iframe + 改 MD 下载 + 删路径）
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（commit `340817b`）
 
 **代码仓范围：**
 - 根项目：`/Users/melody/code/ai-workshop-007`
@@ -212,7 +212,7 @@ export function getReportHtmlPreviewUrl(id: number): string {
 - 审计信息：
   - repo: `root`
     branch: `007-ui-report-optimization`
-    commit: `<TBD>`
+    commit: `340817b`
     pr: `<TBD>`
     changed_files:
       - `frontend/src/views/reports/ReportDetailPage.vue`
@@ -221,7 +221,7 @@ export function getReportHtmlPreviewUrl(id: number): string {
 
 ### Task T3: ProjectListPage.vue 改造（DELETE → PATCH el-switch）
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（commit `8b76c36`）
 
 **代码仓范围：**
 - 根项目：`/Users/melody/code/ai-workshop-007`
@@ -275,7 +275,7 @@ async function toggleProjectActiveHandler(project: Project) {
 - 审计信息：
   - repo: `root`
     branch: `007-ui-report-optimization`
-    commit: `<TBD>`
+    commit: `8b76c36`
     pr: `<TBD>`
     changed_files:
       - `frontend/src/views/projects/ProjectListPage.vue`
@@ -284,7 +284,7 @@ async function toggleProjectActiveHandler(project: Project) {
 
 ### Task T4: report.html.j2 商务报告风重写
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（commit `ced6614`）
 
 **代码仓范围：**
 - 根项目：`/Users/melody/code/ai-workshop-007`
@@ -321,7 +321,7 @@ async function toggleProjectActiveHandler(project: Project) {
 - 审计信息：
   - repo: `root`
     branch: `007-ui-report-optimization`
-    commit: `<TBD>`
+    commit: `ced6614`
     pr: `<TBD>`
     changed_files:
       - `backend/templates/reports/report.html.j2`
@@ -330,7 +330,7 @@ async function toggleProjectActiveHandler(project: Project) {
 
 ### Task T5: 全量测试验证 + 前端 build
 
-- [ ] **状态**：未开始
+- [x] **状态**：已完成（纯验证任务，无新增 commit）
 
 **代码仓范围：**
 - 根项目：`/Users/melody/code/ai-workshop-007`
@@ -356,14 +356,17 @@ async function toggleProjectActiveHandler(project: Project) {
 - Expected: `✓ built` 无错误
 
 **步骤 4：提交（如有修复）**
-- 若测试或 build 发现问题需修复，修复后提交
-- Commit message: `fix: 全量验证修复`（如适用）
+- 无需修复，全部验证通过
+- 验证结果：
+  - 后端测试：137 tests OK（60.475s）
+  - Django check：no issues（0 silenced）
+  - 前端 build：✓ built in 2.47s
 - 审计信息：
   - repo: `root`
     branch: `007-ui-report-optimization`
-    commit: `<TBD>`
+    commit: N/A（纯验证任务）
     pr: `<TBD>`
-    changed_files: `<TBD>`
+    changed_files: N/A
 
 ---
 

@@ -15,6 +15,7 @@ import inngest
 from .inngest_client import inngest_client
 from .models import IntelligenceFeed, MonitorProject
 from .serializers import (
+    FeedChangeListSerializer,
     IntelligenceFeedDetailSerializer,
     IntelligenceFeedListSerializer,
     MonitorProjectSerializer,
@@ -246,3 +247,23 @@ class FeedOptimizePromptView(APIView):
 
         result = optimize_prompts(pk)
         return Response(result, status=status.HTTP_200_OK)
+
+
+class FeedChangeListView(generics.ListAPIView):
+    """返回所有监控到的内容变化列表。
+
+    GET /api/feeds/changes
+    仅返回 job_status=CHANGED 的记录，数据结构:
+    [{竞品名称, 变化的前后内容, 意图分析结果}]
+    """
+
+    serializer_class = FeedChangeListSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self) -> QuerySet[IntelligenceFeed]:
+        return (
+            IntelligenceFeed.objects
+            .select_related("project")
+            .filter(job_status=IntelligenceFeed.JobStatus.CHANGED)
+            .order_by("-published_at", "-id")
+        )

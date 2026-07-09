@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    FeedChangeListView,
     FeedDownloadMdView,
     FeedHtmlPreviewView,
     FeedOptimizePromptView,
@@ -24,4 +25,5 @@ urlpatterns = [
     path("feeds/<int:pk>/download_md", FeedDownloadMdView.as_view(), name="feed-download-md"),
     path("feeds/<int:pk>/preview_html", FeedHtmlPreviewView.as_view(), name="feed-preview-html"),
     path("feeds/<int:pk>/optimize_prompt", FeedOptimizePromptView.as_view(), name="feed-optimize-prompt"),
+    path("feeds/changes", FeedChangeListView.as_view(), name="feed-change-list"),
 ]

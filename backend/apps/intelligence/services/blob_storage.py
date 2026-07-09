@@ -30,6 +30,7 @@ def upload(
     content: str | bytes,
     content_type: str = "text/plain",
     allow_overwrite: bool = False,
+    add_random_suffix: bool = False,
 ) -> str:
     """上传内容到 Vercel Blob，返回 Blob URL。
 
@@ -38,6 +39,7 @@ def upload(
         content: 文件内容（str 或 bytes）
         content_type: MIME 类型
         allow_overwrite: 是否允许覆盖已存在的同名 Blob
+        add_random_suffix: 是否在文件名末尾追加随机后缀避免冲突
 
     Returns:
         Blob URL 字符串（如 "https://xxx.public.blob.vercel-storage.com/..."）
@@ -55,6 +57,8 @@ def upload(
     }
     if allow_overwrite:
         options["allowOverwrite"] = True
+    if add_random_suffix:
+        options["addRandomSuffix"] = True
 
     result = vercel_blob.put(
         pathname,
@@ -89,7 +93,7 @@ def upload_snapshot(project_id: int, url: str, content: str, fetch_time, ext: st
     pathname = f"snapshots/{project_id}/{date_str}/{prefix}{time_str}_{slug}.{ext}"
     content_type = "text/html" if ext == "html" else "text/markdown"
 
-    return upload(pathname, content, content_type)
+    return upload(pathname, content, content_type, add_random_suffix=True)
 
 
 def upload_report(project_id: int, feed_id: int, content: str, ext: str) -> str:
@@ -110,7 +114,7 @@ def upload_report(project_id: int, feed_id: int, content: str, ext: str) -> str:
     pathname = f"reports/{project_id}/{date_str}/{feed_id}.{ext}"
     content_type = "text/html" if ext == "html" else "text/markdown"
 
-    return upload(pathname, content, content_type)
+    return upload(pathname, content, content_type, add_random_suffix=True)
 
 
 def read_content(blob_url: str) -> str:

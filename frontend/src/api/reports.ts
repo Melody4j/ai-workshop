@@ -17,10 +17,13 @@ export interface ReportDetail {
   id: number
   project: Project
   job_status: "CHANGED" | "NO_CHANGE" | "ERROR_CRAWL"
+  competitor_overview: string
   change_summary: string
   strategic_intent: string
   action_suggestion: string
   evidence_diff: string
+  diff_text: string
+  raw_diff_text: string
   user_feedback: number | null
   user_comment: string
   html_report_path: string

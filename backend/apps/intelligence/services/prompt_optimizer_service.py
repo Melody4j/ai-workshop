@@ -48,7 +48,10 @@ def optimize_prompts(feed_id: int) -> dict:
             logger.warning(f"[Prompt优化] 读取 clean_md 失败: {e}")
 
     # 拼接 AI 分析报告
-    ai_report = f"""## 变化摘要
+    ai_report = f"""## 竞品概述
+{feed.competitor_overview}
+
+## 变化摘要
 {feed.change_summary}
 
 ## 战略意图

@@ -38,7 +38,7 @@
 2. 针对不满意的原因，优化 intel_system 和 intel_user 两个 prompt
 3. **必须保留以下占位符**（用花括号包裹），不得删除或修改：
    - intel_system 中：`{self_product_doc}`
-   - intel_user 中：`{diff_text}` 和 `{negative_few_shots}`
+   - intel_user 中：`{diff_text}`、`{negative_few_shots}` 和 `{competitor_context}`
 4. 优化方向示例：
    - 如果分析太笼统 → 增加"必须引用具体变化内容"的约束
    - 如果行动建议不具体 → 增加"必须包含时间/资源/优先级"的约束

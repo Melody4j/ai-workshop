@@ -2,6 +2,8 @@ Django>=5.0,<5.1
 djangorestframework>=3.15,<3.16
 # 调度（Inngest 替代 django-apscheduler）
 inngest>=0.5.0
+# cron 表达式校验（serializers.py validate_cron 使用）
+croniter>=2.0.0
 # LLM 相关
 openai>=1.0.0
 instructor>=1.0.0

@@ -38,14 +38,19 @@
 2. 针对不满意的原因，优化 intel_system 和 intel_user 两个 prompt
 3. **必须保留以下占位符**（用花括号包裹），不得删除或修改：
    - intel_system 中：`{self_product_doc}`
-   - intel_user 中：`{diff_text}`、`{negative_few_shots}` 和 `{competitor_context}`
-4. 优化方向示例：
+   - intel_user 中：`{diff_text}`、`{page_content}`、`{negative_few_shots}` 和 `{competitor_context}`
+4. **不得删除以下内容**：
+   - 防编造规则（"严禁编造""事实与推断分离"等核心原则）
+   - 字段定义（5 个字段的名称和数量不得增删）
+   - intel_user 中的"重要提醒"部分
+5. 优化方向示例：
    - 如果分析太笼统 → 增加"必须引用具体变化内容"的约束
    - 如果行动建议不具体 → 增加"必须包含时间/资源/优先级"的约束
    - 如果战略意图太主观 → 增加"必须基于事实推断，标注假设"的约束
    - 如果证据不足 → 增加"必须引用 diff 中的原文片段"的约束
-5. 不要大幅改变 prompt 的整体结构，做增量优化
-6. 保持 prompt 简洁，不要过度膨胀
+   - 如果维度不够丰富 → 在战略意图/行动建议的多维度清单中补充维度
+6. 不要大幅改变 prompt 的整体结构，做增量优化
+7. 保持 prompt 简洁，不要过度膨胀
 
 ## 输出
 

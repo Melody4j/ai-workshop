@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('intelligence', '0006_diff_text_promptversion'),
+        ('intelligence', '0007_datasnapshot_append_only_trigger'),
     ]
 
     operations = [

@@ -10,9 +10,11 @@ from apps.intelligence.services.retry import LLMError
 class DenoiseServiceTest(SimpleTestCase):
     """测试 llm_service.denoise()。"""
 
+    @patch("apps.intelligence.services.llm_service.load_prompt")
     @patch("apps.intelligence.services.llm_service.get_openai_client")
-    def test_denoise_success(self, mock_get_client):
+    def test_denoise_success(self, mock_get_client, mock_load_prompt):
         """denoise 正常调用 LLM，返回降噪后 MD。"""
+        mock_load_prompt.side_effect = lambda name, **kw: f"[prompt:{name}]" if name == "denoise_system" else f"[prompt:{name}]{kw.get('bs_clean_md','')}"
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="降噪后MD"))]
@@ -43,10 +45,12 @@ class DenoiseServiceTest(SimpleTestCase):
         self.assertEqual(result, "极短")
         mock_get_client.assert_not_called()
 
+    @patch("apps.intelligence.services.llm_service.load_prompt")
     @patch("apps.intelligence.services.llm_service.time.sleep")
     @patch("apps.intelligence.services.llm_service.get_openai_client")
-    def test_denoise_retry_exhausted_raises_llm_error(self, mock_get_client, mock_sleep):
+    def test_denoise_retry_exhausted_raises_llm_error(self, mock_get_client, mock_sleep, mock_load_prompt):
         """LLM 3 次失败 → raise LLMError。"""
+        mock_load_prompt.side_effect = lambda name, **kw: f"[prompt:{name}]"
         mock_client = MagicMock()
         mock_client.chat.completions.create.side_effect = Exception("API Error")
         mock_get_client.return_value = mock_client

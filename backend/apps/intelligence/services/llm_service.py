@@ -40,13 +40,15 @@ def denoise(bs_clean_md: str) -> str:
         logger.info("[LLM降噪] 输入为空或过短，跳过 LLM 调用")
         return bs_clean_md
 
-    prompt = load_prompt("denoise", bs_clean_md=bs_clean_md)
+    system_prompt = load_prompt("denoise_system")
+    user_prompt = load_prompt("denoise", bs_clean_md=bs_clean_md)
 
     client = get_openai_client()
     response = client.chat.completions.create(
         model=settings.LLM_MODEL,
         messages=[
-            {"role": "user", "content": prompt},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
         ],
         temperature=settings.LLM_TEMPERATURE,
         max_tokens=settings.LLM_MAX_TOKENS,

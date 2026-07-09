@@ -116,6 +116,7 @@ def read_content(blob_url: str) -> str:
     """
     response = requests.get(blob_url, timeout=30)
     response.raise_for_status()
+    response.encoding = response.apparent_encoding or "utf-8"
     return response.text
 
 

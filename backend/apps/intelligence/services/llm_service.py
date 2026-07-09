@@ -5,14 +5,12 @@
 3. generate_intel(): LLM 情报生成（instructor + Pydantic 结构化输出）
 """
 
-import json
 import logging
-import re
 import time
 
 from django.conf import settings
 
-from .llm_client import get_openai_client, get_instructor_client, IntelResult
+from .llm_client import get_openai_client, get_instructor_client, IntelResult, DiffJudgeResult
 from .prompt_loader import load_prompt
 from .retry import retry, LLMError
 
@@ -81,67 +79,27 @@ def judge_diff(diff_text: str, self_product_doc: str) -> dict:
     # self_product_doc 为空时标注
     doc_context = self_product_doc if self_product_doc and self_product_doc.strip() else "（暂无产品锚定文档）"
 
-    prompt = load_prompt(
+    system_prompt = load_prompt("diff_judge_system")
+    user_prompt = load_prompt(
         "diff_judge",
         self_product_doc=doc_context,
         diff_text=diff_text,
     )
 
-    client = get_openai_client()
-    response = client.chat.completions.create(
+    client = get_instructor_client()
+    result = client.chat.completions.create(
         model=settings.LLM_MODEL,
+        response_model=DiffJudgeResult,
         messages=[
-            {"role": "user", "content": prompt},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
         ],
         temperature=settings.LLM_TEMPERATURE,
         max_tokens=settings.LLM_MAX_TOKENS,
     )
 
-    raw_output = response.choices[0].message.content.strip()
-
-    # 尝试从返回中提取 JSON
-    result = _extract_json(raw_output)
-    if result is None:
-        raise ValueError(f"LLM 返回非 JSON 格式: {raw_output[:200]}")
-
-    logger.info(f"[LLM diff判断] 结果: has_meaningful_change={result.get('has_meaningful_change')}")
-    return result
-
-
-def _extract_json(text: str) -> dict | None:
-    """从文本中提取 JSON 对象。
-
-    LLM 可能在 JSON 前后添加 markdown 代码块标记，需要容错提取。
-
-    Args:
-        text: LLM 返回的文本
-
-    Returns:
-        解析后的 dict，解析失败返回 None
-    """
-    # 尝试直接解析
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
-
-    # 尝试提取 ```json ... ``` 代码块
-    match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
-    if match:
-        try:
-            return json.loads(match.group(1))
-        except json.JSONDecodeError:
-            pass
-
-    # 尝试提取第一个 { ... } 块
-    match = re.search(r'\{[^{}]*\}', text, re.DOTALL)
-    if match:
-        try:
-            return json.loads(match.group(0))
-        except json.JSONDecodeError:
-            pass
-
-    return None
+    logger.info(f"[LLM diff判断] 结果: has_meaningful_change={result.has_meaningful_change}")
+    return {"has_meaningful_change": result.has_meaningful_change, "reason": result.reason}
 
 
 def get_negative_few_shots(project_id: int, limit: int = 5) -> list:

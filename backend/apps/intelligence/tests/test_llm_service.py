@@ -67,15 +67,16 @@ class DenoiseServiceTest(SimpleTestCase):
 class JudgeDiffServiceTest(SimpleTestCase):
     """测试 llm_service.judge_diff()。"""
 
-    @patch("apps.intelligence.services.llm_service.get_openai_client")
-    def test_judge_diff_meaningful_change(self, mock_get_client):
+    @patch("apps.intelligence.services.llm_service.load_prompt")
+    @patch("apps.intelligence.services.llm_service.get_instructor_client")
+    def test_judge_diff_meaningful_change(self, mock_get_client, mock_load_prompt):
         """LLM 判断有意义的变 → 返回 {has_meaningful_change: True}。"""
+        mock_load_prompt.side_effect = lambda name, **kw: f"[prompt:{name}]"
+        from apps.intelligence.services.llm_client import DiffJudgeResult
         mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(
-            content='{"has_meaningful_change": true, "reason": "功能更新"}'
-        ))]
-        mock_client.chat.completions.create.return_value = mock_response
+        mock_client.chat.completions.create.return_value = DiffJudgeResult(
+            has_meaningful_change=True, reason="功能更新"
+        )
         mock_get_client.return_value = mock_client
 
         from apps.intelligence.services.llm_service import judge_diff
@@ -84,15 +85,16 @@ class JudgeDiffServiceTest(SimpleTestCase):
         self.assertTrue(result["has_meaningful_change"])
         self.assertEqual(result["reason"], "功能更新")
 
-    @patch("apps.intelligence.services.llm_service.get_openai_client")
-    def test_judge_diff_no_meaningful_change(self, mock_get_client):
+    @patch("apps.intelligence.services.llm_service.load_prompt")
+    @patch("apps.intelligence.services.llm_service.get_instructor_client")
+    def test_judge_diff_no_meaningful_change(self, mock_get_client, mock_load_prompt):
         """LLM 判断无意义的变 → 返回 {has_meaningful_change: False}。"""
+        mock_load_prompt.side_effect = lambda name, **kw: f"[prompt:{name}]"
+        from apps.intelligence.services.llm_client import DiffJudgeResult
         mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(
-            content='{"has_meaningful_change": false, "reason": "仅排版调整"}'
-        ))]
-        mock_client.chat.completions.create.return_value = mock_response
+        mock_client.chat.completions.create.return_value = DiffJudgeResult(
+            has_meaningful_change=False, reason="仅排版调整"
+        )
         mock_get_client.return_value = mock_client
 
         from apps.intelligence.services.llm_service import judge_diff
@@ -101,7 +103,7 @@ class JudgeDiffServiceTest(SimpleTestCase):
         self.assertFalse(result["has_meaningful_change"])
         self.assertEqual(result["reason"], "仅排版调整")
 
-    @patch("apps.intelligence.services.llm_service.get_openai_client")
+    @patch("apps.intelligence.services.llm_service.get_instructor_client")
     def test_judge_diff_empty_diff_returns_false(self, mock_get_client):
         """空 diff → 直接返回无意义，不调用 LLM。"""
         from apps.intelligence.services.llm_service import judge_diff
@@ -111,10 +113,12 @@ class JudgeDiffServiceTest(SimpleTestCase):
         self.assertIn("无变化", result["reason"])
         mock_get_client.assert_not_called()
 
+    @patch("apps.intelligence.services.llm_service.load_prompt")
     @patch("apps.intelligence.services.llm_service.time.sleep")
-    @patch("apps.intelligence.services.llm_service.get_openai_client")
-    def test_judge_diff_retry_exhausted_raises_llm_error(self, mock_get_client, mock_sleep):
+    @patch("apps.intelligence.services.llm_service.get_instructor_client")
+    def test_judge_diff_retry_exhausted_raises_llm_error(self, mock_get_client, mock_sleep, mock_load_prompt):
         """LLM 3 次失败 → raise LLMError。"""
+        mock_load_prompt.side_effect = lambda name, **kw: f"[prompt:{name}]"
         mock_client = MagicMock()
         mock_client.chat.completions.create.side_effect = Exception("API Error")
         mock_get_client.return_value = mock_client

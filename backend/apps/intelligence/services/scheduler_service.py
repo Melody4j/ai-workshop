@@ -56,9 +56,10 @@ def run_scan():
                 continue
             title = (item or {}).get("title", "")
             crawl_hint = (item or {}).get("crawl_hint", "")
+            competitor_context = _get_competitor_context(project, idx - 1)
             logger.info(f"[采集] ({idx}/{len(urls)}) {title} - {url}")
             try:
-                _process_url(project, url, title, now, crawl_hint)
+                _process_url(project, url, title, now, crawl_hint, competitor_context)
             except Exception as e:
                 logger.error(f"[处理异常] {url} - {e}", exc_info=True)
                 IntelligenceFeed.objects.create(
@@ -105,9 +106,10 @@ def run_scan_for_project(project_id: int):
             continue
         title = (item or {}).get("title", "")
         crawl_hint = (item or {}).get("crawl_hint", "")
+        competitor_context = _get_competitor_context(project, idx - 1)
         logger.info(f"[手动执行] ({idx}/{len(urls)}) {title} - {url}")
         try:
-            _process_url(project, url, title, now, crawl_hint)
+            _process_url(project, url, title, now, crawl_hint, competitor_context)
         except Exception as e:
             logger.error(f"[手动执行异常] {url} - {e}", exc_info=True)
             IntelligenceFeed.objects.create(
@@ -121,7 +123,27 @@ def run_scan_for_project(project_id: int):
     logger.info(f"[手动执行完成] 项目 {project.project_name} (id={project_id}) 执行结束")
 
 
-def _process_url(project, url, title, now, crawl_hint=""):
+def _get_competitor_context(project, index: int) -> str:
+    """按 index 从 project.competitor_contexts 取对应竞品补充文档，格式化为文本。
+
+    Args:
+        project: MonitorProject 实例
+        index: competitor_urls 的 0-based 索引
+
+    Returns:
+        格式化后的竞品上下文文本；无补充文档时返回占位文本
+    """
+    contexts = project.competitor_contexts or []
+    ctx_item = contexts[index] if index < len(contexts) else {}
+    supplement_name = (ctx_item or {}).get("supplement_doc_name", "")
+    supplement_content = (ctx_item or {}).get("supplement_doc_content", "")
+
+    if supplement_content and supplement_content.strip():
+        return f"文档名称：{supplement_name}\n\n文档内容：\n{supplement_content}"
+    return "暂无竞品补充文档"
+
+
+def _process_url(project, url, title, now, crawl_hint="", competitor_context=""):
     """处理单个 URL 的完整链路：采集 → LLM降噪 → diff熔断 → 情报生成 → 入库+报告。
 
     异常由调用方捕获，单 URL 异常不中断其他 URL。
@@ -250,6 +272,7 @@ def _process_url(project, url, title, now, crawl_hint=""):
             diff_text=diff_text,
             self_product_doc=project.self_product_doc,
             few_shots=few_shots,
+            competitor_context=competitor_context,
         )
     except Exception as e:
         logger.error(f"[LLM情报生成失败] {url} - {e}", exc_info=True)
@@ -262,10 +285,11 @@ def _process_url(project, url, title, now, crawl_hint=""):
         )
         return
 
-    # === Step 9: 写 IntelligenceFeed(CHANGED, 4字段) ===
+    # === Step 9: 写 IntelligenceFeed(CHANGED, 5字段) ===
     feed = IntelligenceFeed.objects.create(
         project=project,
         job_status=IntelligenceFeed.JobStatus.CHANGED,
+        competitor_overview=intel_result.competitor_overview,
         change_summary=intel_result.change_summary,
         strategic_intent=intel_result.strategic_intent,
         action_suggestion=intel_result.action_suggestion,

@@ -142,6 +142,30 @@ class IntelligenceFeedDetailSerializer(serializers.ModelSerializer):
         ]
 
 
+class FeedChangeListSerializer(serializers.ModelSerializer):
+    """内容变化列表序列化器。
+
+    返回结构: {竞品名称, 变化的前后内容, 意图分析结果}
+    - competitor_name: 项目名称（每个监控项目对应一组竞品）
+    - diff_text: difflib 原始 diff 文本（变化前后内容）
+    - evidence_diff: LLM 提取的证据 diff
+    - strategic_intent: LLM 意图分析结果
+    """
+
+    competitor_name = serializers.CharField(source="project.project_name", read_only=True)
+
+    class Meta:
+        model = IntelligenceFeed
+        fields = [
+            "id",
+            "competitor_name",
+            "diff_text",
+            "evidence_diff",
+            "strategic_intent",
+            "published_at",
+        ]
+
+
 class ReportRatingSerializer(serializers.ModelSerializer):
     class Meta:
         model = IntelligenceFeed

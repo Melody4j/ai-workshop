@@ -211,16 +211,17 @@ def _process_url(project, url, title, now, crawl_hint="", competitor_context="")
         logger.info(f"[首次爬取] {url} 无历史快照，跳过 diff")
         skip_diff = True
         diff_text = llm_clean_md
-    elif not prev_snapshot.clean_md_path or "llm_" not in Path(prev_snapshot.clean_md_path).name:
-        # 旧格式兼容：上一条是 pre-LLM 快照
+    elif not prev_snapshot.clean_md_path or "llm_" not in prev_snapshot.clean_md_path:
+        # 旧格式兼容：上一条是 pre-LLM 快照（Blob URL pathname 中无 llm_ 前缀）
         logger.info(f"[旧格式兼容] {url} 上一条快照为 pre-LLM 格式，跳过 diff")
         skip_diff = True
         diff_text = llm_clean_md
     else:
-        # === Step 6: 读取上一条 LLM 降噪 MD，做文本 diff ===
+        # === Step 6: 从 Blob URL 读取上一条 LLM 降噪 MD，做文本 diff ===
         prev_md = ""
         try:
-            prev_md = Path(prev_snapshot.clean_md_path).read_text(encoding="utf-8")
+            from apps.intelligence.services import blob_storage
+            prev_md = blob_storage.read_content(prev_snapshot.clean_md_path)
         except Exception as e:
             logger.warning(f"[读取上一条快照失败] {url} - {e}，跳过 diff")
             skip_diff = True

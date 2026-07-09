@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/wsgi.py": {
+      "maxDuration": 300,
+      "excludeFiles": "{**/__pycache__/**,**/tests/**,**/*.test.py,**/test_*.py,**/.pytest_cache/**,**/.env,**/.env.local,**/data/**}"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/wsgi.py" },
+    { "source": "/view/:path*", "destination": "/api/wsgi.py" },
+    { "source": "/admin/:path*", "destination": "/api/wsgi.py" },
+    { "source": "/static/:path*", "destination": "/api/wsgi.py" }
+  ]
+}

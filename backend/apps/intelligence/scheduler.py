@@ -1,32 +1,10 @@
-import atexit
-import logging
+"""调度模块（已迁移到 Inngest）。
 
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
-from django_apscheduler.jobstores import DjangoJobStore
+原 BackgroundScheduler + django-apscheduler 已移除。
+调度逻辑由 Inngest Cron 函数 + 事件函数接管，定义在 inngest_client.py 中。
 
-logger = logging.getLogger(__name__)
-_scheduler = None
+run_scan / run_scan_for_project 的实际实现位于 scheduler_service.py，由 Inngest 函数调用。
+"""
 
-
-def start_scheduler():
-    global _scheduler
-    if _scheduler is not None:
-        return  # 防止重复启动
-    _scheduler = BackgroundScheduler()
-    _scheduler.add_jobstore(DjangoJobStore(), "default")
-    _scheduler.add_job(
-        run_scan_job,
-        trigger=CronTrigger(second="*/5"),
-        id="scan_all_projects",
-        name="Scan all active projects",
-        replace_existing=True,
-    )
-    _scheduler.start()
-    atexit.register(lambda: _scheduler.shutdown(wait=False))
-    logger.info("APScheduler 已启动，全局扫描 Job 已注册 (每 5 秒)")
-
-
-def run_scan_job():
-    from apps.intelligence.services import scheduler_service
-    scheduler_service.run_scan()
+# 此模块保留为空，避免历史导入引用报错。
+# 调度入口已迁移至 apps.intelligence.inngest_client

@@ -1,9 +1,7 @@
 import logging
-import os
-import threading
 
 from django.db.models import QuerySet
-from django.http import FileResponse, Http404, HttpResponse
+from django.http import Http404, HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework import generics, status
@@ -11,6 +9,9 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+import inngest
+
+from .inngest_client import inngest_client
 from .models import IntelligenceFeed, MonitorProject
 from .serializers import (
     IntelligenceFeedDetailSerializer,
@@ -18,27 +19,9 @@ from .serializers import (
     MonitorProjectSerializer,
     ReportRatingSerializer,
 )
-from .services import feishu_service
+from .services import blob_storage, feishu_service
 
 logger = logging.getLogger(__name__)
-
-
-def _async_optimize_prompts(feed_id: int) -> None:
-    """在后台线程中执行 prompt 优化，异常仅记录日志。"""
-    try:
-        from .services.prompt_optimizer_service import optimize_prompts
-        optimize_prompts(feed_id)
-    except Exception as e:
-        logger.error(f"[Prompt优化] feed={feed_id} 异步优化失败: {e}", exc_info=True)
-
-
-def _async_run_scan(project_id: int) -> None:
-    """在后台线程中执行手动扫描，异常仅记录日志。"""
-    try:
-        from .services.scheduler_service import run_scan_for_project
-        run_scan_for_project(project_id)
-    except Exception as e:
-        logger.error(f"[手动执行] project={project_id} 异步执行失败: {e}", exc_info=True)
 
 
 class ProjectListCreateView(generics.ListCreateAPIView):
@@ -61,7 +44,7 @@ class ProjectExecuteView(APIView):
     """手动触发项目扫描。
 
     POST /api/projects/{id}/execute
-    异步启动后台线程执行扫描（采集 → LLM → 报告 → 推送），立即返回 202。
+    通过 Inngest 事件触发异步扫描（采集 → LLM → 报告 → 推送），立即返回 202。
     """
 
     permission_classes = [AllowAny]
@@ -72,12 +55,12 @@ class ProjectExecuteView(APIView):
         except MonitorProject.DoesNotExist:
             raise Http404
 
-        thread = threading.Thread(
-            target=_async_run_scan,
-            args=(pk,),
-            daemon=True,
+        inngest_client.send_sync(
+            inngest.Event(
+                name="app/scan.project",
+                data={"project_id": pk},
+            )
         )
-        thread.start()
 
         return Response(
             {"detail": "任务已开始执行", "project_id": pk},
@@ -129,14 +112,14 @@ class ReportRatingView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        # 评分=-1 时异步触发 prompt 优化
+        # 评分=-1 时通过 Inngest 事件触发 prompt 优化
         if feed.user_feedback == -1:
-            thread = threading.Thread(
-                target=_async_optimize_prompts,
-                args=(feed.pk,),
-                daemon=True,
+            inngest_client.send_sync(
+                inngest.Event(
+                    name="app/optimize.prompt",
+                    data={"feed_id": feed.pk},
+                )
             )
-            thread.start()
 
         return Response(IntelligenceFeedDetailSerializer(feed).data, status=status.HTTP_200_OK)
 
@@ -146,14 +129,14 @@ class ReportRatingView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        # 评分=-1 时异步触发 prompt 优化
+        # 评分=-1 时通过 Inngest 事件触发 prompt 优化
         if feed.user_feedback == -1:
-            thread = threading.Thread(
-                target=_async_optimize_prompts,
-                args=(feed.pk,),
-                daemon=True,
+            inngest_client.send_sync(
+                inngest.Event(
+                    name="app/optimize.prompt",
+                    data={"feed_id": feed.pk},
+                )
             )
-            thread.start()
 
         return Response(IntelligenceFeedDetailSerializer(feed).data, status=status.HTTP_200_OK)
 
@@ -191,35 +174,37 @@ class FeedPushView(APIView):
 
 
 class FeedDownloadMdView(APIView):
-    """下载 MD 报告文件"""
+    """下载 MD 报告文件（从 Vercel Blob 读取）。"""
 
     permission_classes = [AllowAny]
 
-    def get(self, request, pk: int) -> FileResponse:
+    def get(self, request, pk: int) -> HttpResponse:
         try:
             feed = IntelligenceFeed.objects.get(pk=pk)
         except IntelligenceFeed.DoesNotExist:
             raise Http404
 
-        md_path = feed.md_table_path
-        if not md_path or not os.path.exists(md_path):
+        md_url = feed.md_table_path
+        if not md_url:
+            raise Http404("MD report URL not found")
+
+        try:
+            content = blob_storage.read_content(md_url)
+        except Exception as e:
+            logger.error(f"[下载MD] feed={pk} 读取 Blob 失败: {e}", exc_info=True)
             raise Http404("MD report file not found")
 
-        filename = os.path.basename(md_path) or f"report_{pk}.md"
-        return FileResponse(
-            open(md_path, "rb"),
-            content_type="text/markdown",
-            as_attachment=True,
-            filename=filename,
-        )
+        response = HttpResponse(content, content_type="text/markdown; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="report_{pk}.md"'
+        return response
 
 
 @method_decorator(xframe_options_exempt, name="dispatch")
 class FeedHtmlPreviewView(APIView):
-    """在线预览 HTML 报告（inline，不触发下载）。
+    """在线预览 HTML 报告（从 Vercel Blob 读取，inline 返回）。
 
-    飞书卡片"在线预览"按钮跳转到 /view/html/{id}，由本 view 读取
-    feed.html_report_path 文件内容并以 text/html 返回，浏览器直接渲染。
+    飞书卡片"在线预览"按钮跳转到 /view/html/{id}，由本 view 从
+    feed.html_report_path（Blob URL）读取内容并以 text/html 返回。
     """
 
     permission_classes = [AllowAny]
@@ -230,12 +215,15 @@ class FeedHtmlPreviewView(APIView):
         except IntelligenceFeed.DoesNotExist:
             raise Http404
 
-        html_path = feed.html_report_path
-        if not html_path or not os.path.exists(html_path):
-            raise Http404("HTML report file not found")
+        html_url = feed.html_report_path
+        if not html_url:
+            raise Http404("HTML report URL not found")
 
-        with open(html_path, "rb") as f:
-            content = f.read()
+        try:
+            content = blob_storage.read_content(html_url)
+        except Exception as e:
+            logger.error(f"[预览HTML] feed={pk} 读取 Blob 失败: {e}", exc_info=True)
+            raise Http404("HTML report file not found")
 
         return HttpResponse(content, content_type="text/html; charset=utf-8")
 

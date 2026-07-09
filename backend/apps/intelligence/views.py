@@ -1,7 +1,7 @@
 import logging
 
 from django.db.models import QuerySet
-from django.http import FileResponse, Http404, HttpResponse
+from django.http import Http404, HttpResponse
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -17,7 +17,7 @@ from .serializers import (
     MonitorProjectSerializer,
     ReportRatingSerializer,
 )
-from .services import feishu_service
+from .services import blob_storage, feishu_service
 
 logger = logging.getLogger(__name__)
 
@@ -172,34 +172,36 @@ class FeedPushView(APIView):
 
 
 class FeedDownloadMdView(APIView):
-    """下载 MD 报告文件"""
+    """下载 MD 报告文件（从 Vercel Blob 读取）。"""
 
     permission_classes = [AllowAny]
 
-    def get(self, request, pk: int) -> FileResponse:
+    def get(self, request, pk: int) -> HttpResponse:
         try:
             feed = IntelligenceFeed.objects.get(pk=pk)
         except IntelligenceFeed.DoesNotExist:
             raise Http404
 
-        md_path = feed.md_table_path
-        if not md_path or not os.path.exists(md_path):
+        md_url = feed.md_table_path
+        if not md_url:
+            raise Http404("MD report URL not found")
+
+        try:
+            content = blob_storage.read_content(md_url)
+        except Exception as e:
+            logger.error(f"[下载MD] feed={pk} 读取 Blob 失败: {e}", exc_info=True)
             raise Http404("MD report file not found")
 
-        filename = os.path.basename(md_path) or f"report_{pk}.md"
-        return FileResponse(
-            open(md_path, "rb"),
-            content_type="text/markdown",
-            as_attachment=True,
-            filename=filename,
-        )
+        response = HttpResponse(content, content_type="text/markdown; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="report_{pk}.md"'
+        return response
 
 
 class FeedHtmlPreviewView(APIView):
-    """在线预览 HTML 报告（inline，不触发下载）。
+    """在线预览 HTML 报告（从 Vercel Blob 读取，inline 返回）。
 
-    飞书卡片"在线预览"按钮跳转到 /view/html/{id}，由本 view 读取
-    feed.html_report_path 文件内容并以 text/html 返回，浏览器直接渲染。
+    飞书卡片"在线预览"按钮跳转到 /view/html/{id}，由本 view 从
+    feed.html_report_path（Blob URL）读取内容并以 text/html 返回。
     """
 
     permission_classes = [AllowAny]
@@ -210,12 +212,15 @@ class FeedHtmlPreviewView(APIView):
         except IntelligenceFeed.DoesNotExist:
             raise Http404
 
-        html_path = feed.html_report_path
-        if not html_path or not os.path.exists(html_path):
-            raise Http404("HTML report file not found")
+        html_url = feed.html_report_path
+        if not html_url:
+            raise Http404("HTML report URL not found")
 
-        with open(html_path, "rb") as f:
-            content = f.read()
+        try:
+            content = blob_storage.read_content(html_url)
+        except Exception as e:
+            logger.error(f"[预览HTML] feed={pk} 读取 Blob 失败: {e}", exc_info=True)
+            raise Http404("HTML report file not found")
 
         return HttpResponse(content, content_type="text/html; charset=utf-8")
 

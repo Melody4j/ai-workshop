@@ -40,7 +40,7 @@ class Command(BaseCommand):
 
             try:
                 content = md_file.read_text(encoding="utf-8")
-                blob_url = blob_storage.upload(pathname, content, content_type="text/markdown")
+                blob_url = blob_storage.upload(pathname, content, content_type="text/markdown", allow_overwrite=True)
                 self.stdout.write(self.style.SUCCESS(f"  ✅ {name}.md → {blob_url}"))
                 success_count += 1
             except Exception as e:

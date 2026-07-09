@@ -25,13 +25,19 @@ def _ensure_token():
         raise RuntimeError("BLOB_READ_WRITE_TOKEN 未配置，无法操作 Vercel Blob")
 
 
-def upload(pathname: str, content: str | bytes, content_type: str = "text/plain") -> str:
+def upload(
+    pathname: str,
+    content: str | bytes,
+    content_type: str = "text/plain",
+    allow_overwrite: bool = False,
+) -> str:
     """上传内容到 Vercel Blob，返回 Blob URL。
 
     Args:
         pathname: Blob 路径名（如 "snapshots/1/20240101_120000_example.html"）
         content: 文件内容（str 或 bytes）
         content_type: MIME 类型
+        allow_overwrite: 是否允许覆盖已存在的同名 Blob
 
     Returns:
         Blob URL 字符串（如 "https://xxx.public.blob.vercel-storage.com/..."）
@@ -43,13 +49,17 @@ def upload(pathname: str, content: str | bytes, content_type: str = "text/plain"
     else:
         content_bytes = content
 
+    options = {
+        "token": _BLOB_TOKEN,
+        "contentType": content_type,
+    }
+    if allow_overwrite:
+        options["allowOverwrite"] = True
+
     result = vercel_blob.put(
         pathname,
         content_bytes,
-        options={
-            "token": _BLOB_TOKEN,
-            "contentType": content_type,
-        },
+        options=options,
     )
     blob_url = result.get("url", "")
     logger.info(f"[Blob] 已上传 {pathname} → {blob_url} ({len(content_bytes)} bytes)")

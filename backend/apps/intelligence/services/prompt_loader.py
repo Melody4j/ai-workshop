@@ -52,7 +52,7 @@ def save_prompt(name: str, content: str) -> None:
         content: 要写入的完整 prompt 内容
     """
     pathname = f"prompts/{name}.md"
-    blob_storage.upload(pathname, content, content_type="text/markdown")
+    blob_storage.upload(pathname, content, content_type="text/markdown", allow_overwrite=True)
     logger.info(f"[Prompt] 已保存模板 {name} 到 Blob，{len(content)} 字符")
 
 

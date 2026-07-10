@@ -81,6 +81,7 @@ function save() {
 <style scoped>
 .rating-surface {
   display: grid;
+  align-content: start;
   gap: 18px;
   padding: 22px;
   border: 1px solid var(--border-soft);

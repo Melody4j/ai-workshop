@@ -168,6 +168,14 @@ onMounted(loadReport)
           </div>
         </section>
 
+        <RatingForm
+          :initial-feedback="report.user_feedback"
+          :initial-comment="report.user_comment"
+          :loading="saving"
+          @save="saveRating"
+          @clear="removeRating"
+        />
+
         <template v-if="report.job_status === 'CHANGED'">
           <section class="detail-reading-grid">
             <article class="surface-panel">
@@ -326,15 +334,6 @@ onMounted(loadReport)
           </el-alert>
         </section>
       </div>
-      <aside class="detail-side">
-        <RatingForm
-          :initial-feedback="report.user_feedback"
-          :initial-comment="report.user_comment"
-          :loading="saving"
-          @save="saveRating"
-          @clear="removeRating"
-        />
-      </aside>
     </section>
 
     <section v-else class="surface-panel surface-panel--empty">
@@ -346,12 +345,10 @@ onMounted(loadReport)
 <style scoped>
 .detail-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.9fr);
   gap: 18px;
 }
 
 .detail-main,
-.detail-side,
 .detail-reading-grid,
 .detail-overview {
   display: grid;
@@ -359,7 +356,7 @@ onMounted(loadReport)
 }
 
 .detail-reading-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .detail-overview {
@@ -512,16 +509,6 @@ onMounted(loadReport)
   background: rgba(214, 75, 69, 0.12);
   border-color: rgba(214, 75, 69, 0.2);
   color: #bb3c37;
-}
-
-@media (max-width: 1120px) {
-  .detail-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .detail-reading-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 720px) {

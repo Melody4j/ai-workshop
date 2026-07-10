@@ -28,6 +28,10 @@ const changedReports = computed(() =>
     ),
 )
 
+const featuredChanges = computed(() => changedReports.value.slice(0, 4))
+const activeProjectCount = computed(() => projects.value.filter((project) => project.is_active).length)
+const dormantProjectCount = computed(() => projects.value.filter((project) => !project.is_active).length)
+
 async function loadCockpit() {
   loading.value = true
   try {
@@ -48,65 +52,92 @@ onMounted(loadCockpit)
 
 <template>
   <section class="page-stack">
-    <div class="page-header">
-      <div>
-        <p class="page-kicker">仪表盘</p>
-        <h2>监控仪表盘</h2>
+    <section class="hero-slab">
+      <div class="hero-slab__content">
+        <p class="section-label">监控总览</p>
+        <h1>竞品分析工作台</h1>
       </div>
-      <el-button :loading="loading" @click="loadCockpit">刷新数据</el-button>
-    </div>
+      <div class="hero-slab__actions">
+        <el-button type="primary" @click="router.push('/projects')">进入任务管理</el-button>
+        <el-button @click="router.push('/monitoring')">查看任务监控</el-button>
+        <el-button text :loading="loading" @click="loadCockpit">刷新数据</el-button>
+      </div>
+    </section>
 
-    <el-row :gutter="16">
-      <el-col :xs="24" :md="8">
-        <el-card class="metric-card" shadow="never">
-          <p class="stat-label">任务总数</p>
-          <el-statistic :value="projects.length" />
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :md="8">
-        <el-card class="metric-card" shadow="never">
-          <p class="stat-label">过去 24 小时执行总次数</p>
-          <el-statistic :value="last24HoursReports.length" />
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :md="8">
-        <el-card class="metric-card" shadow="never">
-          <p class="stat-label">过去 24 小时重大变更</p>
-          <el-statistic
-            :value="last24HoursReports.filter((report) => report.job_status === 'CHANGED').length"
-          />
-        </el-card>
-      </el-col>
-    </el-row>
+    <section class="stats-grid">
+      <article class="metric-panel">
+        <p class="metric-panel__label">任务总数</p>
+        <strong class="metric-panel__value">{{ projects.length }}</strong>
+        <span class="metric-panel__note">当前已配置的监控任务</span>
+      </article>
+      <article class="metric-panel">
+        <p class="metric-panel__label">24h 执行次数</p>
+        <strong class="metric-panel__value">{{ last24HoursReports.length }}</strong>
+        <span class="metric-panel__note">最近一天所有执行记录</span>
+      </article>
+      <article class="metric-panel">
+        <p class="metric-panel__label">重大变更</p>
+        <strong class="metric-panel__value">{{ changedReports.length }}</strong>
+        <span class="metric-panel__note">需要优先查看的变化任务</span>
+      </article>
+      <article class="metric-panel metric-panel--soft">
+        <p class="metric-panel__label">启用 / 停用</p>
+        <strong class="metric-panel__value">{{ activeProjectCount }} / {{ dormantProjectCount }}</strong>
+      </article>
+    </section>
 
-    <el-card shadow="never">
-      <div class="page-header">
+    <section class="surface-panel">
+      <div class="surface-panel__header">
         <div>
-          <p class="page-kicker">重大变更</p>
-          <h3>最近有重大变更的任务执行</h3>
+          <p class="section-label">快速入口</p>
+          <h3>继续今天的主要工作流</h3>
         </div>
+        <span class="surface-panel__meta">首屏即可达</span>
       </div>
 
-      <div v-if="changedReports.length === 0" class="empty-panel">
+      <div class="action-tile-grid">
+        <button class="action-tile" type="button" @click="router.push('/projects')">
+          <span class="action-tile__label">任务管理</span>
+          <strong>配置监控任务</strong>
+          <p>查看任务清单、调度节奏和下一次运行时间。</p>
+        </button>
+        <button class="action-tile" type="button" @click="router.push('/monitoring')">
+          <span class="action-tile__label">任务监控</span>
+          <strong>阅读情报结果</strong>
+          <p>集中查看执行状态、变化摘要和报告详情。</p>
+        </button>
+      </div>
+    </section>
+
+    <section class="surface-panel">
+      <div class="surface-panel__header">
+        <div>
+          <p class="section-label">最近重大变更</p>
+          <h3>优先处理这些变化任务</h3>
+        </div>
+        <span class="surface-panel__meta">{{ changedReports.length }} 条可读记录</span>
+      </div>
+
+      <div v-if="featuredChanges.length === 0" class="surface-panel__empty">
         <el-empty description="当前还没有可展示的重大变更记录。" />
       </div>
 
-      <div v-else class="card-grid">
-        <el-card
-          v-for="report in changedReports"
+      <div v-else class="change-feed">
+        <button
+          v-for="report in featuredChanges"
           :key="report.id"
-          class="panel-card is-clickable"
-          shadow="hover"
+          type="button"
+          class="change-feed__item"
           @click="router.push(`/monitoring/${report.id}`)"
         >
-          <div class="change-card__top">
-            <el-tag effect="plain" round type="info">重大变更</el-tag>
-            <span>{{ new Date(report.published_at).toLocaleString() }}</span>
+          <div class="change-feed__row">
+            <span class="info-pill info-pill--accent">重大变更</span>
+            <time>{{ new Date(report.published_at).toLocaleString() }}</time>
           </div>
           <strong>{{ report.project_name }}</strong>
           <p>{{ report.change_summary }}</p>
-        </el-card>
+        </button>
       </div>
-    </el-card>
+    </section>
   </section>
 </template>

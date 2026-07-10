@@ -14,11 +14,11 @@ const togglingId = ref<number | null>(null)
 
 const projectNextRuns = computed(() => {
   const map: Record<number, string[]> = {}
-  for (const p of projects.value) {
-    if (p.is_active) {
-      map[p.id] = getNextRuns(p.cron, 5)
+  for (const project of projects.value) {
+    if (project.is_active) {
+      map[project.id] = getNextRuns(project.cron, 5)
     } else {
-      map[p.id] = []
+      map[project.id] = []
     }
   }
   return map
@@ -26,11 +26,24 @@ const projectNextRuns = computed(() => {
 
 const projectCronLabels = computed(() => {
   const map: Record<number, string> = {}
-  for (const p of projects.value) {
-    map[p.id] = cron2label(toQuartzCron(p.cron))
+  for (const project of projects.value) {
+    map[project.id] = cron2label(toQuartzCron(project.cron))
   }
   return map
 })
+
+const activeProjectCount = computed(() => projects.value.filter((project) => project.is_active).length)
+const competitorCount = computed(() =>
+  projects.value.reduce((total, project) => total + project.competitor_urls.length, 0),
+)
+
+function projectSourcePreview(project: Project) {
+  return project.competitor_urls
+    .slice(0, 3)
+    .map((item) => item.title || item.url)
+    .filter(Boolean)
+    .join(" / ")
+}
 
 async function loadProjects() {
   loading.value = true
@@ -75,32 +88,49 @@ onMounted(loadProjects)
 
 <template>
   <section class="page-stack">
-    <div class="page-header">
-      <div>
-        <p class="page-kicker">任务管理</p>
-        <h2>任务管理</h2>
+    <section class="hero-slab hero-slab--compact">
+      <div class="hero-slab__content">
+        <p class="section-label">任务管理</p>
+        <h1>任务管理</h1>
       </div>
-      <el-button type="primary" @click="router.push('/projects/new')">新建任务</el-button>
-    </div>
+      <div class="hero-slab__actions">
+        <el-button type="primary" @click="router.push('/projects/new')">新建任务</el-button>
+        <el-button text :loading="loading" @click="loadProjects">刷新列表</el-button>
+      </div>
+    </section>
 
-    <section class="card-grid">
-      <el-card v-if="projects.length === 0" shadow="never" class="empty-panel">
+    <section class="summary-strip">
+      <div class="summary-pill">
+        <span>任务总数</span>
+        <strong>{{ projects.length }}</strong>
+      </div>
+      <div class="summary-pill">
+        <span>启用中</span>
+        <strong>{{ activeProjectCount }}</strong>
+      </div>
+      <div class="summary-pill">
+        <span>竞品来源</span>
+        <strong>{{ competitorCount }}</strong>
+      </div>
+    </section>
+
+    <section class="project-collection" v-loading="loading">
+      <section v-if="projects.length === 0" class="surface-panel surface-panel--empty">
         <el-empty description="当前还没有监控任务。" />
-      </el-card>
+      </section>
 
-      <el-card
-        v-for="project in projects"
-        :key="project.id"
-        class="panel-card panel-card--compact"
-        shadow="never"
-        v-loading="loading"
-      >
-        <div class="page-header page-header--compact">
-          <div>
-            <p class="page-kicker">任务 #{{ project.id }}</p>
+      <article v-for="project in projects" :key="project.id" class="project-card">
+        <div class="project-card__head">
+          <div class="title-block">
+            <p class="section-label">任务 #{{ project.id }}</p>
             <h3>{{ project.project_name }}</h3>
+            <p>{{ projectSourcePreview(project) || "—" }}</p>
           </div>
-          <div class="action-row">
+
+          <div class="project-card__state">
+            <span class="info-pill" :class="{ 'info-pill--accent': project.is_active }">
+              {{ project.is_active ? "启用中" : "已停用" }}
+            </span>
             <el-switch
               :model-value="project.is_active"
               :loading="togglingId === project.id"
@@ -112,34 +142,41 @@ onMounted(loadProjects)
           </div>
         </div>
 
-        <dl class="meta-grid">
-          <div>
-            <dt>Cron</dt>
-            <dd>{{ project.cron }}</dd>
+        <div class="project-card__meta">
+          <div class="meta-chip">
+            <span>Cron</span>
+            <strong>{{ project.cron }}</strong>
           </div>
-          <div>
-            <dt>调度语义</dt>
-            <dd>{{ projectCronLabels[project.id] }}</dd>
+          <div class="meta-chip">
+            <span>调度语义</span>
+            <strong>{{ projectCronLabels[project.id] }}</strong>
           </div>
-          <div>
-            <dt>竞品数量</dt>
-            <dd>{{ project.competitor_urls.length }}</dd>
+          <div class="meta-chip">
+            <span>竞品数量</span>
+            <strong>{{ project.competitor_urls.length }}</strong>
           </div>
-        </dl>
+        </div>
 
         <div
           v-if="project.is_active && projectNextRuns[project.id]?.length"
-          class="next-runs-block"
+          class="project-card__schedule"
         >
-          <p class="next-runs-block__title">接下来 5 次运行</p>
-          <ul class="next-runs-block__list">
-            <li v-for="(run, index) in projectNextRuns[project.id]" :key="index">
-              {{ run }}
-            </li>
+          <div class="section-heading section-heading--inline">
+            <div>
+              <p class="section-label">接下来 5 次运行</p>
+              <h4>调度窗口</h4>
+            </div>
+          </div>
+          <ul class="run-list">
+            <li v-for="(run, index) in projectNextRuns[project.id]" :key="index">{{ run }}</li>
           </ul>
         </div>
 
-        <div class="action-row action-row--end">
+        <div v-else class="project-card__schedule project-card__schedule--muted">
+          <p>当前任务未启用，因此不会自动调度执行。</p>
+        </div>
+
+        <div class="project-card__footer">
           <el-button
             type="primary"
             :loading="executingId === project.id"
@@ -152,7 +189,7 @@ onMounted(loadProjects)
             查看监控
           </el-button>
         </div>
-      </el-card>
+      </article>
     </section>
   </section>
 </template>

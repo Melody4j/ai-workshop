@@ -4,6 +4,30 @@ import { useRoute } from "vue-router"
 
 const route = useRoute()
 
+const navigation = [
+  {
+    to: "/cockpit",
+    label: "仪表盘",
+    eyebrow: "Cockpit",
+    title: "竞品分析工作台",
+    description: "",
+  },
+  {
+    to: "/projects",
+    label: "任务管理",
+    eyebrow: "Projects",
+    title: "任务配置工作区",
+    description: "",
+  },
+  {
+    to: "/monitoring",
+    label: "任务监控",
+    eyebrow: "Monitoring",
+    title: "情报阅读工作区",
+    description: "",
+  },
+] as const
+
 const activeMenu = computed(() => {
   const path = route.path
 
@@ -17,48 +41,55 @@ const activeMenu = computed(() => {
 
   return "/cockpit"
 })
+
+const currentSection = computed(
+  () => navigation.find((item) => item.to === activeMenu.value) ?? navigation[0],
+)
+
+const todayLabel = computed(() =>
+  new Intl.DateTimeFormat("zh-CN", {
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  }).format(new Date()),
+)
 </script>
 
 <template>
-  <el-container class="workspace-shell">
-    <el-aside class="workspace-sidebar" width="260px">
-      <div class="sidebar-brand">
-        <p class="sidebar-kicker">Competitive Intel Agent</p>
-        <h1>监控控制台</h1>
+  <div class="workspace-shell">
+    <aside class="workspace-sidebar">
+      <div class="shell-brand-card">
+        <p class="shell-overline">Competitive Intel Agent</p>
+        <h1>Monitor</h1>
+        <div class="shell-brand-card__chips">
+          <span class="info-pill">{{ todayLabel }}</span>
+        </div>
       </div>
 
-      <section class="sidebar-section">
-        <p class="sidebar-section__title">仪表盘</p>
-        <el-menu
-          :default-active="activeMenu"
-          router
-          class="sidebar-menu"
-          background-color="#000000"
-          text-color="#ffffff"
-          active-text-color="#ffffff"
+      <nav class="shell-nav">
+        <RouterLink
+          v-for="item in navigation"
+          :key="item.to"
+          :to="item.to"
+          class="shell-nav__item"
+          :class="{ 'is-active': activeMenu === item.to }"
         >
-          <el-menu-item index="/cockpit">仪表盘</el-menu-item>
-        </el-menu>
-      </section>
+          <span class="shell-nav__title">{{ item.label }}</span>
+        </RouterLink>
+      </nav>
+    </aside>
 
-      <section class="sidebar-section">
-        <p class="sidebar-section__title">任务工作台</p>
-        <el-menu
-          :default-active="activeMenu"
-          router
-          class="sidebar-menu"
-          background-color="#000000"
-          text-color="#ffffff"
-          active-text-color="#ffffff"
-        >
-          <el-menu-item index="/projects">任务管理</el-menu-item>
-          <el-menu-item index="/monitoring">任务监控</el-menu-item>
-        </el-menu>
-      </section>
-    </el-aside>
+    <section class="workspace-main">
+      <header class="workspace-topbar">
+        <div>
+          <p class="workspace-topbar__eyebrow">{{ currentSection.eyebrow }}</p>
+          <h2>{{ currentSection.title }}</h2>
+        </div>
+      </header>
 
-    <el-main class="workspace-main">
-      <RouterView />
-    </el-main>
-  </el-container>
+      <main class="workspace-frame">
+        <RouterView />
+      </main>
+    </section>
+  </div>
 </template>

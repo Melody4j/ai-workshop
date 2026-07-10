@@ -15,10 +15,11 @@ const emit = defineEmits<{
 const feedback = ref<number | null>(null)
 const comment = ref("")
 
-/** 已完成评分（有评分 + 有评语）时禁用编辑，需先清空才能重新评分 */
 const isComplete = computed(
   () => props.initialFeedback !== null && props.initialComment.trim() !== "",
 )
+
+const hasFeedback = computed(() => feedback.value === 1 || feedback.value === -1)
 
 watch(
   () => [props.initialFeedback, props.initialComment] as const,
@@ -30,48 +31,92 @@ watch(
 )
 
 function save() {
-  if (feedback.value !== -1 && feedback.value !== 1) {
-    return
-  }
+  if (!hasFeedback.value) return
 
   emit("save", {
-    user_feedback: feedback.value,
+    user_feedback: feedback.value as -1 | 1,
     user_comment: comment.value,
   })
 }
 </script>
 
 <template>
-  <el-card shadow="never">
-    <div class="page-header">
+  <section class="rating-surface">
+    <div class="surface-panel__header">
       <div>
-        <p class="page-kicker">反馈评分</p>
-        <h3>评分与评语</h3>
+        <p class="section-label">反馈评分</p>
+        <h3>告诉系统这条报告值不值得学</h3>
       </div>
-      <el-button text :disabled="loading" @click="emit('clear')">
-        清空评分
+      <el-button text :disabled="loading" @click="emit('clear')">清空评分</el-button>
+    </div>
+
+    <div class="rating-surface__body">
+      <el-radio-group v-model="feedback" class="rating-grid" :disabled="isComplete">
+        <el-radio-button :label="1">有帮助</el-radio-button>
+        <el-radio-button :label="-1">没帮助</el-radio-button>
+      </el-radio-group>
+
+      <el-form label-position="top">
+        <el-form-item label="评语">
+          <el-input
+            v-model="comment"
+            type="textarea"
+            :rows="4"
+            placeholder="这条报告为什么有帮助或没帮助？"
+            :disabled="isComplete"
+          />
+        </el-form-item>
+      </el-form>
+    </div>
+
+    <div class="rating-surface__footer">
+      <span v-if="isComplete" class="rating-surface__tip">已保存反馈，如需修改请先清空评分。</span>
+      <el-button type="primary" :disabled="loading || isComplete || !hasFeedback" @click="save">
+        保存评分
       </el-button>
     </div>
-
-    <el-radio-group v-model="feedback" class="rating-options" :disabled="isComplete">
-      <el-radio-button :label="1">有帮助</el-radio-button>
-      <el-radio-button :label="-1">没帮助</el-radio-button>
-    </el-radio-group>
-
-    <el-form label-position="top">
-      <el-form-item label="评语">
-        <el-input
-          v-model="comment"
-          type="textarea"
-          :rows="4"
-          placeholder="这条报告为什么有帮助或没帮助？"
-          :disabled="isComplete"
-        />
-      </el-form-item>
-    </el-form>
-
-    <div class="action-row">
-      <el-button type="primary" :disabled="loading || isComplete" @click="save">保存评分</el-button>
-    </div>
-  </el-card>
+  </section>
 </template>
+
+<style scoped>
+.rating-surface {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-panel);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-subtle);
+}
+
+.rating-surface__body {
+  display: grid;
+  gap: 18px;
+}
+
+.rating-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.rating-surface__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rating-surface__tip {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+@media (max-width: 640px) {
+  .rating-surface__footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+</style>

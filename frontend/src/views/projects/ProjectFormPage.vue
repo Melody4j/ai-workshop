@@ -97,12 +97,18 @@ onMounted(loadProject)
 
 <template>
   <section class="page-stack">
-    <div class="page-header">
-      <div>
-        <p class="page-kicker">任务管理</p>
-        <h2>{{ isEdit ? "编辑任务" : "新增任务" }}</h2>
+    <section class="hero-slab hero-slab--compact">
+      <div class="hero-slab__content">
+        <p class="section-label">任务配置</p>
+        <h1>{{ isEdit ? "编辑监控任务" : "创建新的监控任务" }}</h1>
+        <p>
+          把任务名称、自有产品锚定、竞品来源、调度和通知拆成更清晰的配置区块，让录入路径更短，也更容易回看。
+        </p>
       </div>
-    </div>
+      <div class="hero-slab__actions">
+        <span class="info-pill info-pill--accent">{{ isEdit ? "编辑模式" : "创建模式" }}</span>
+      </div>
+    </section>
 
     <ProjectForm
       :initial-value="formValue"

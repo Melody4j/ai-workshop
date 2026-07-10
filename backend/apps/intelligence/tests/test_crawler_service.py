@@ -48,6 +48,14 @@ class StartCrawlTest(SimpleTestCase):
         _, kwargs = mock_post.call_args
         self.assertIn("prompt", kwargs["json"])
         self.assertEqual(kwargs["json"]["prompt"], "爬取定价页")
+        self.assertEqual(
+            kwargs["json"]["scrapeOptions"],
+            {
+                "formats": ["markdown", "html"],
+                "maxAge": 0,
+                "storeInCache": False,
+            },
+        )
 
     @patch("apps.intelligence.services.crawler_service.requests.post")
     def test_start_crawl_without_prompt(self, mock_post):
@@ -61,6 +69,14 @@ class StartCrawlTest(SimpleTestCase):
         self.assertEqual(job_id, "job-456")
         _, kwargs = mock_post.call_args
         self.assertNotIn("prompt", kwargs["json"])
+        self.assertEqual(
+            kwargs["json"]["scrapeOptions"],
+            {
+                "formats": ["markdown", "html"],
+                "maxAge": 0,
+                "storeInCache": False,
+            },
+        )
 
     @patch("apps.intelligence.services.crawler_service.requests.post")
     def test_start_crawl_api_error_returns_empty(self, mock_post):

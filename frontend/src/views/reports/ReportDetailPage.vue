@@ -348,6 +348,7 @@ onMounted(loadReport)
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.9fr);
   gap: 18px;
+  align-items: start;
 }
 
 .detail-main,
@@ -360,6 +361,10 @@ onMounted(loadReport)
 
 .detail-reading-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detail-side {
+  align-self: start;
 }
 
 .detail-overview {

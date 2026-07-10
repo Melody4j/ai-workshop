@@ -91,10 +91,7 @@ onMounted(loadProjects)
     <section class="hero-slab hero-slab--compact">
       <div class="hero-slab__content">
         <p class="section-label">任务管理</p>
-        <h1>让任务状态、调度语义和核心操作都保持在同一层级里。</h1>
-        <p>
-          这一页优先服务高频查看和快速操作。信息分层更清楚，但不牺牲启停、立即执行和跳转监控的效率。
-        </p>
+        <h1>任务管理</h1>
       </div>
       <div class="hero-slab__actions">
         <el-button type="primary" @click="router.push('/projects/new')">新建任务</el-button>
@@ -127,7 +124,7 @@ onMounted(loadProjects)
           <div class="title-block">
             <p class="section-label">任务 #{{ project.id }}</p>
             <h3>{{ project.project_name }}</h3>
-            <p>{{ projectSourcePreview(project) || "暂未补充竞品来源说明。" }}</p>
+            <p>{{ projectSourcePreview(project) || "—" }}</p>
           </div>
 
           <div class="project-card__state">

@@ -207,7 +207,6 @@ function onSubmit() {
           <p class="section-label">基本信息</p>
           <h3>先定义任务本身</h3>
         </div>
-        <p class="support-copy">项目名称会出现在任务列表、报告详情和通知上下文里。</p>
       </div>
 
       <div class="form-grid form-grid--two">
@@ -234,7 +233,6 @@ function onSubmit() {
           <p class="section-label">自有产品锚定</p>
           <h3>给 LLM 一个稳定的产品参照</h3>
         </div>
-        <p class="support-copy">支持直接粘贴内容，也支持上传文本文件自动填充。</p>
       </div>
 
       <div class="field-block">
@@ -276,7 +274,6 @@ function onSubmit() {
           <h3>逐条补足监控来源与上下文</h3>
         </div>
         <div class="action-row action-row--tight">
-          <p class="support-copy">为每个竞品补充来源名称、URL、采集提示词和补充文档。</p>
           <el-button @click="addCompetitor">新增一行</el-button>
         </div>
       </div>
@@ -353,7 +350,6 @@ function onSubmit() {
           <p class="section-label">调度与通知</p>
           <h3>把执行频率和结果送达方式配置完整</h3>
         </div>
-        <p class="support-copy">Cron 保持标准 5 段写法，支持弹窗配置；Webhook 直接复用现有接口。</p>
       </div>
 
       <div class="form-grid form-grid--two">

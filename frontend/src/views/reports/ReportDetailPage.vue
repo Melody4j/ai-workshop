@@ -129,9 +129,6 @@ onMounted(loadReport)
         <p class="section-label">执行详情</p>
         <h1 v-if="report">{{ report.project.project_name }} / 报告 #{{ report.id }}</h1>
         <h1 v-else>执行详情</h1>
-        <p>
-          这一页优先服务分析阅读。先看状态和概览，再看正文、证据 diff 和反馈操作，不让重要信息散在多个层里。
-        </p>
       </div>
       <div class="hero-slab__actions">
         <el-button @click="router.push('/monitoring')">返回任务监控</el-button>
@@ -329,23 +326,7 @@ onMounted(loadReport)
           </el-alert>
         </section>
       </div>
-
       <aside class="detail-side">
-        <section class="surface-panel">
-          <div class="surface-panel__header">
-            <div>
-              <p class="section-label">阅读指引</p>
-              <h3>先看什么</h3>
-            </div>
-          </div>
-          <ul class="detail-guide">
-            <li>先确认状态和发布时间，判断是否需要立即跟进。</li>
-            <li v-if="report.job_status === 'CHANGED'">再读变化摘要、战略意图和行动建议。</li>
-            <li v-else-if="report.job_status === 'NO_CHANGE'">重点看熔断原因，以及原始 diff 是否有真实变化。</li>
-            <li v-else>先处理错误信息，再决定是否需要重跑任务。</li>
-          </ul>
-        </section>
-
         <RatingForm
           :initial-feedback="report.user_feedback"
           :initial-comment="report.user_comment"
@@ -372,8 +353,7 @@ onMounted(loadReport)
 .detail-main,
 .detail-side,
 .detail-reading-grid,
-.detail-overview,
-.detail-guide {
+.detail-overview {
   display: grid;
   gap: 18px;
 }
@@ -420,16 +400,6 @@ onMounted(loadReport)
   border: 0;
   border-radius: var(--radius-panel);
   background: #ffffff;
-}
-
-.detail-guide {
-  margin: 0;
-  padding-left: 18px;
-  color: var(--text-body);
-}
-
-.detail-guide li {
-  line-height: 1.7;
 }
 
 .diff-badge {

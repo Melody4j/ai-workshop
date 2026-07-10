@@ -55,10 +55,7 @@ onMounted(loadCockpit)
     <section class="hero-slab">
       <div class="hero-slab__content">
         <p class="section-label">监控总览</p>
-        <h1>把任务态势、关键变更和主要操作压到同一个首屏里。</h1>
-        <p>
-          这个仪表盘仍然是工作台，不是营销首页。它负责先把今天值得处理的事情讲清楚，再把你送到任务配置和报告阅读入口。
-        </p>
+        <h1>竞品分析工作台</h1>
       </div>
       <div class="hero-slab__actions">
         <el-button type="primary" @click="router.push('/projects')">进入任务管理</el-button>
@@ -86,7 +83,6 @@ onMounted(loadCockpit)
       <article class="metric-panel metric-panel--soft">
         <p class="metric-panel__label">启用 / 停用</p>
         <strong class="metric-panel__value">{{ activeProjectCount }} / {{ dormantProjectCount }}</strong>
-        <span class="metric-panel__note">保持调度状态一眼可见</span>
       </article>
     </section>
 

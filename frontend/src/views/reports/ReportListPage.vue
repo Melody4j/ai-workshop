@@ -93,10 +93,7 @@ watch(selectedProjectId, async (next, previous) => {
     <section class="hero-slab hero-slab--compact">
       <div class="hero-slab__content">
         <p class="section-label">任务监控</p>
-        <h1>把执行状态、变化摘要和详情入口稳定地压进一条阅读流里。</h1>
-        <p>
-          这里优先服务结果扫描。你应该能在很短时间内判断哪些任务有变化、哪些被熔断、哪些执行失败，然后直接跳进详情。
-        </p>
+        <h1>任务监控</h1>
       </div>
       <div class="hero-slab__actions">
         <el-button v-if="selectedProjectId" @click="router.push('/monitoring')">返回全部列表</el-button>

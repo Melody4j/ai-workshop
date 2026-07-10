@@ -8,7 +8,7 @@ export class ApiError extends Error {
 }
 
 type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE"
-const REQUEST_TIMEOUT_MS = 8000
+const REQUEST_TIMEOUT_MS = 30000
 
 async function request<T>(url: string, method: HttpMethod, body?: unknown): Promise<T> {
   const controller = new AbortController()

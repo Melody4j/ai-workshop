@@ -109,6 +109,11 @@ a {
 }
 
 .workspace-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
   display: grid;
   align-content: start;
   gap: 24px;
@@ -236,6 +241,7 @@ a {
 }
 
 .workspace-main {
+  min-width: 0;
   display: grid;
   gap: 28px;
   padding: 28px 32px 36px;
@@ -959,6 +965,9 @@ a {
   }
 
   .workspace-sidebar {
+    position: static;
+    height: auto;
+    overflow-y: visible;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: stretch;
   }

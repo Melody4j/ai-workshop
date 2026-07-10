@@ -15,6 +15,11 @@ logger = logging.getLogger(__name__)
 POLL_INTERVAL = 5       # 轮询间隔（秒）
 POLL_TIMEOUT = 120      # 总超时（秒）
 CRAWL_LIMIT = 50        # 最大爬取页数
+FRESH_SCRAPE_OPTIONS = {
+    "formats": ["markdown", "html"],
+    "maxAge": 0,
+    "storeInCache": False,
+}
 
 
 def fetch_with_firecrawl(url: str, crawl_hint: str = "") -> tuple[str, str]:
@@ -67,10 +72,17 @@ def _start_crawl(url: str, prompt: str) -> str:
     body = {
         "url": url,
         "limit": CRAWL_LIMIT,
-        "scrapeOptions": {"formats": ["markdown", "html"]},
+        "scrapeOptions": dict(FRESH_SCRAPE_OPTIONS),
     }
     if prompt:
         body["prompt"] = prompt
+
+    logger.info(
+        "[Firecrawl] 发起 fresh crawl url=%s, limit=%s, scrapeOptions=%s",
+        url,
+        CRAWL_LIMIT,
+        body["scrapeOptions"],
+    )
 
     resp = requests.post(
         f"{settings.FIRECRAWL_API_URL}/v2/crawl",
@@ -107,9 +119,16 @@ def _start_crawl(url: str, prompt: str) -> str:
     if ai_opts:
         logger.info(f"[Firecrawl] AI 生成参数: {ai_opts}")
     if final_opts:
-        logger.info(f"[Firecrawl] 最终爬取参数: includePaths={final_opts.get('includePaths')}, "
-                     f"maxDepth={final_opts.get('maxDepth')}, limit={final_opts.get('limit')}, "
-                     f"crawlEntireDomain={final_opts.get('crawlEntireDomain')}")
+        logger.info(
+            "[Firecrawl] 最终爬取参数: includePaths=%s, maxDepth=%s, limit=%s, "
+            "crawlEntireDomain=%s, maxAge=%s, storeInCache=%s",
+            final_opts.get("includePaths"),
+            final_opts.get("maxDepth"),
+            final_opts.get("limit"),
+            final_opts.get("crawlEntireDomain"),
+            final_opts.get("maxAge"),
+            final_opts.get("storeInCache"),
+        )
 
     return job_id
 

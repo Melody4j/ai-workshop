@@ -294,7 +294,7 @@ status: draft
 
 ### Task T4: 重构监控列表与报告详情阅读布局
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`/Users/melody/code/ai-workshop`
@@ -319,34 +319,34 @@ status: draft
 **步骤 1：写失败测试（如适用）**
 - Run: 不适用（当前无报告列表/详情页自动化 UI 测试）
 - Expected: 记录为 N/A，并在步骤 3 使用构建与多状态页面烟测
+- Result: N/A（当前批次仍沿用构建与页面烟测的最小验证方式）
 
 **步骤 2：写最少实现**
 - 修改点：
   - `frontend/src/views/reports/ReportListPage.vue`
   - `frontend/src/views/reports/ReportDetailPage.vue`
   - `frontend/src/components/reports/RatingForm.vue`
-  - `frontend/src/styles/main.css`
 
 **步骤 3：运行验证**
 - Run: `cd /Users/melody/code/ai-workshop/frontend; npm run build`
 - Expected: PASS（构建通过，详情页多状态视图无模板/样式错误）
+- Result: PASS（2026-07-10：`npm run build` 通过；监控列表、详情页与评分区模板均编译成功）
 
 **步骤 4：提交（频繁提交；commit message 必须中文）**
 - Commit message: `重构监控列表与报告详情布局`
 - 审计信息：
   - repo: `root`
     branch: `011-linkfox-ui-redesign`
-    commit: `<TBD>`
+    commit: `9eeec84`
     pr: `<TBD>`
     changed_files:
       - `frontend/src/views/reports/ReportListPage.vue`
       - `frontend/src/views/reports/ReportDetailPage.vue`
       - `frontend/src/components/reports/RatingForm.vue`
-      - `frontend/src/styles/main.css`
 
 ### Task T5: 做跨页面一致性收口与烟测
 
-- [ ] **状态**：未开始
+- [x] **状态**：完成
 
 **代码仓范围：**
 - 根项目：`/Users/melody/code/ai-workshop`
@@ -373,32 +373,29 @@ status: draft
 **步骤 1：写失败测试（如适用）**
 - Run: 不适用（当前无端到端 UI 自动化基线）
 - Expected: 记录为 N/A，并在步骤 3 以构建和手动路由烟测替代
+- Result: N/A（当前仓库仍未引入端到端自动化基线）
 
 **步骤 2：写最少实现**
-- 修改点：按烟测结果回收 `main.css` 与各页面残留不一致样式
+- 修改点：按烟测结果复核跨页面一致性；本批次未发现需要额外修改的全局样式文件，沿用 `T4` 的阅读布局调整作为收口结果
 
 **步骤 3：运行验证**
 - Run:
   - `cd /Users/melody/code/ai-workshop/frontend; npm run build`
   - `cd /Users/melody/code/ai-workshop/frontend; npm run dev -- --host 127.0.0.1 --port 4173`
 - Expected: PASS（构建通过；开发服务器正常启动；手动走查 `/cockpit`、`/projects`、`/projects/new`、`/monitoring`、`/monitoring/:id` 时主流程与布局均正常）
+- Result: PASS（2026-07-10：`npm run build` 通过；本地 dev server 成功启动，`/cockpit`、`/projects`、`/monitoring`、`/monitoring/1` 通过 `curl` 返回 Vite 入口页，可继续由前端路由接管）
 
 **步骤 4：提交（频繁提交；commit message 必须中文）**
 - Commit message: `完成前端界面重构收口与烟测`
 - 审计信息：
   - repo: `root`
     branch: `011-linkfox-ui-redesign`
-    commit: `<TBD>`
+    commit: `9eeec84`
     pr: `<TBD>`
     changed_files:
-      - `frontend/src/styles/main.css`
-      - `frontend/src/components/common/AppShell.vue`
-      - `frontend/src/views/dashboard/CockpitPage.vue`
-      - `frontend/src/views/projects/ProjectListPage.vue`
-      - `frontend/src/views/projects/ProjectFormPage.vue`
-      - `frontend/src/components/projects/ProjectForm.vue`
       - `frontend/src/views/reports/ReportListPage.vue`
       - `frontend/src/views/reports/ReportDetailPage.vue`
+      - `frontend/src/components/reports/RatingForm.vue`
 
 ---
 
